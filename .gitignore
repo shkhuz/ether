@@ -1,0 +1,7 @@
+.dev/
+.tmp/
+bin/
+obj/
+res/*.o
+.gdb_history
+a.out
