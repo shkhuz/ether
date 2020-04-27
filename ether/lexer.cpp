@@ -22,7 +22,7 @@ LexerOutput Lexer::lex(SourceFile* _srcfile) {
 			newline(); 
 			break;
 		default: 
-			error("invalid literal: %c (dec: %d);", *current, (int)(*current));
+			error("invalid literal: ‘%c’ (dec: %d);", *current, (int)(*current));
 			current++;
 			break;
 		}
@@ -30,7 +30,9 @@ LexerOutput Lexer::lex(SourceFile* _srcfile) {
 
 	LexerOutput output;
 	output.tokens = tokens;
-	output.error_occured = ETHER_SUCCESS;
+	output.error_occured = (error_count > 0 ?
+							ETHER_ERROR :
+							ETHER_SUCCESS);
 	return output;
 }
 

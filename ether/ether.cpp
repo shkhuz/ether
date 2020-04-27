@@ -4,7 +4,7 @@
 char* invoker_compiler = null;
 
 void ether_abort_no_args() {
-	fprintf(stderr, "Compilation terminated.");
+	fprintf(stderr, "Compilation terminated.\n");
 	exit(EXIT_FAILURE);
 }
 
@@ -46,6 +46,10 @@ int main(int argc, char** argv) {
 	std::vector<char*> source_files;
 	for (; optind < argc; optind++) {
 		source_files.emplace_back(argv[optind]);
+	}
+
+	if (source_files.empty()) {
+		ether_abort("no files specified; consider adding a ‘main.eth’ source file");
 	}
 
 	for (auto it = source_files.begin(); it != source_files.end(); ++it) {
