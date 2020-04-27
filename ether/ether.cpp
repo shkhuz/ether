@@ -1,9 +1,10 @@
-#include <ether.h>
-#include <compiler.h>
+#include <ether.hpp>
+#include <compiler.hpp>
 
 char* invoker_compiler = null;
 
 void ether_abort_no_args() {
+	fprintf(stderr, "Compilation terminated.");
 	exit(EXIT_FAILURE);
 }
 

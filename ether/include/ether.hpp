@@ -52,3 +52,25 @@ error_code print_file_line_with_info(SourceFile* file, u64 line);
 error_code print_marker_arrow_ln(SourceFile* file, u64 line, u32 column);
 error_code print_marker_arrow_with_info_ln(SourceFile* file, u64 line, u32 column);
 void print_tab(void);
+
+struct StrIntern {
+	char* str;
+	u64 len;
+};
+
+char* str_intern_range(char* start, char* end);
+char* str_intern(char* str);
+
+void print_error_at(SourceFile* srcfile, u64 line, u64 column, const char* fmt, va_list ap);
+
+enum TokenType {
+	T_SEMICOLON,
+};
+
+struct Token {
+	char* lexeme;
+	TokenType type;
+	SourceFile* file;
+	u64 line;
+	u64 column;
+}; 

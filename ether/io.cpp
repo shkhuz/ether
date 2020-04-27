@@ -1,4 +1,4 @@
-#include <ether.h>
+#include <ether.hpp>
 
 SourceFile* read_file(const char* fpath) {
 	/* TODO: more thorough error checking */
@@ -48,15 +48,15 @@ error_code print_file_line(SourceFile* file, u64 line) {
 		if (*line_to_print == '\0') break;
 
 		if (*line_to_print == '\t') print_tab();
-		else printf("%c", *line_to_print);
+		else fprintf(stderr, "%c", *line_to_print);
 		++line_to_print;
 	}
-	printf("\n");
+	fprintf(stderr, "\n");
 	return ETHER_SUCCESS;
 }
 
 error_code print_file_line_with_info(SourceFile* file, u64 line) {
-	printf("%6ld | ", line);
+	fprintf(stderr ,"%6ld | ", line);
 	return print_file_line(file, line);
 }
 
@@ -68,20 +68,20 @@ error_code print_marker_arrow_ln(SourceFile* file, u64 line, u32 column) {
 	while (whitespace_start != marker) {
 		if (*whitespace_start == '\0') return ETHER_ERROR;
 		if (*whitespace_start == '\t') print_tab();
-		else printf(" ");
+		else fprintf(stderr, " ");
 		++whitespace_start;
 	}
-	printf("^\n");
+	fprintf(stderr, "^\n");
 	return ETHER_SUCCESS;
 }
 
 error_code print_marker_arrow_with_info_ln(SourceFile* file, u64 line, u32 column) {
-	printf("%6s | ", "");
+	fprintf(stderr, "%6s | ", "");
 	return print_marker_arrow_ln(file, line, column);
 }
 
 void print_tab(void) {
 	for (u8 i = 0; i < TAB_SIZE; ++i) {
-		printf(" ");
+		fprintf(stderr, " ");
 	}
 }

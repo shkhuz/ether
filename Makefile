@@ -21,7 +21,7 @@ LDFLAGS :=
 
 run: $(BIN_FILE)
 	$(BIN_FILE) -o hello res/hello.eth
-	$(LD) -o $(BIN_DIR)/a.out res/hello.o -Wl,--dynamic-linker=/usr/lib64/ld-linux-x86-64.so.2 
+	gcc -o $(BIN_DIR)/a.out res/hello.o -Wl,--dynamic-linker=/usr/lib64/ld-linux-x86-64.so.2 
 
 debug: $(BIN_FILE)
 	gdb --args $(BIN_FILE) -o hello res/hello.eth
