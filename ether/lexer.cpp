@@ -15,18 +15,68 @@ LexerOutput Lexer::lex(SourceFile* _srcfile) {
 		start = current;
 
 		switch (*current) {
-		case ';':
-			add(T_SEMICOLON); 
+		case ':':		match(':') ? add(T_DOUBLE_COLON) : add(T_COLON); break;
+
+		case '(':		add(T_LPAREN); break;
+		case ')':		add(T_RPAREN); break;
+		case '{':		add(T_LBRACE); break;
+		case '}':		add(T_RBRACE); break;
+		case ';':		add(T_SEMICOLON); break;
+		case ',':		add(T_COMMA); break;
+		case '.':		add(T_DOT); break;
+		case '\n':		newline(); break;
+
+		case 'A': case 'B': case 'C': case 'D':
+		case 'E': case 'F': case 'G': case 'H':
+		case 'I': case 'J': case 'K': case 'L':
+		case 'M': case 'N': case 'O': case 'P':
+		case 'Q': case 'R': case 'S': case 'T':
+		case 'U': case 'V': case 'W': case 'X':
+		case 'Y': case 'Z': 
+		case 'a': case 'b': case 'c': case 'd':
+		case 'e': case 'f': case 'g': case 'h':
+		case 'i': case 'j': case 'k': case 'l':
+		case 'm': case 'n': case 'o': case 'p':
+		case 'q': case 'r': case 's': case 't':
+		case 'u': case 'v': case 'w': case 'x':
+		case 'y': case 'z':
+		case '_':
+			identifier();
 			break;
-		case '\n':	
-			newline(); 
+
+		case '0': case '1':
+		case '2': case '3':
+		case '4': case '5':
+		case '6': case '7':
+		case '8': case '9':
+			number();
 			break;
+
+		case '"':
+			string();
+			break;
+
+		case '\'':
+			chr();
+			break;
+
+		case '\\':
+			backslash();
+			break;
+
+		case '\t':
+		case '\r':
+		case ' ':
+			current++;
+			break;
+
 		default: 
 			error("invalid literal: ‘%c’ (dec: %d);", *current, (int)(*current));
 			current++;
 			break;
 		}
 	}
+	add_eof();
 
 	LexerOutput output;
 	output.tokens = tokens;
@@ -36,6 +86,102 @@ LexerOutput Lexer::lex(SourceFile* _srcfile) {
 	return output;
 }
 
+void Lexer::identifier() {
+	TokenType type = T_IDENTIFIER;
+	current++;
+	while (isalnum(*current) || *current == '_') {
+		current++;
+	}
+
+	char* lexed_identifier = str_intern_range(start, current);
+	for (u64 kw_idx = 0; kw_idx < KEYWORDS_LEN; ++kw_idx) {
+		char* keyword = keywords[kw_idx];
+		if (lexed_identifier ==
+			str_intern(keyword)) {
+			type = T_KEYWORD;
+		}
+	}
+
+	add_in(type);
+}
+
+void Lexer::number() {
+	u64 number_start_line = line;
+	u64 number_start_column = compute_column_on_current();
+	TokenType type = T_INTEGER;
+	while (isdigit(*current)) {
+		current++;
+	}
+
+	if (*current == '.') {
+		current++;
+		if (!isdigit(*current)) {
+			error("expect numeral literal after ‘.’;");
+		}
+
+		type = T_FLOAT64;
+		while (isdigit(*current)) {
+			current++;
+		}
+	}
+
+	if (type == T_INTEGER) {
+		u64 converted_value = strtoul(str_intern_range(start, current), null, 10);
+		if (converted_value == ULONG_MAX && errno == ERANGE) {
+			warning_at_rng(
+					number_start_line, 
+					number_start_column, 
+					(current - start), 
+					"integer overflow; value will be wrapped;");
+		}
+	}
+
+	add_in(type);
+}
+
+void Lexer::string() {
+	u64 quote_line = line;
+	u64 quote_column = compute_column();
+
+	start++;	// don't include the double quotes
+	current++;
+	while (*current != '"') {
+		if (is_at_end()) {
+			error_at(quote_line,
+					 quote_column,
+					 "missing terminating ‘\"’;");
+			return;
+		}
+		current++;
+	}
+
+	add_in(T_STRING);
+	current++;
+}
+
+void Lexer::chr() {
+	u64 quote_line = line;
+	u64 quote_column = compute_column();
+
+	start++;	// don't include the double quotes
+	current++;
+
+	if (*current == '\\') {
+		escape_chars();
+	}
+	else {
+		current++;
+	}
+
+	if (*current != '\'') {
+		error_at(quote_line, quote_column, "missing terminating ‘'’;");
+		return;
+	}
+
+	add_in(T_CHAR);
+	current++;
+}
+
 void Lexer::newline() {
 	last_to_last_newline = last_newline;
 	last_newline = current;
@@ -43,15 +189,84 @@ void Lexer::newline() {
 	current++;
 }
 
-void Lexer::add(TokenType type) {
-	Token* token = new Token();
-	token->lexeme = str_intern_range(start, ++current);
-	token->type = type;
-	token->file = srcfile;
-	token->line = line;
-	token->column = compute_column();
+void Lexer::escape_chars() {
+	current++;
+	switch (*current) {
+	case '\'':
+	case '"':
+	case 'n':
+	case 'r':
+	case 't':
+		break;
+	
+	default:
+		error("invalid escape character ‘%c’;", *current);
+		break;
+	}
 
-	tokens->push_back(token);
+	current++;
+}
+
+void Lexer::backslash() {
+	current++;
+	switch (*current) {
+	case ' ':
+	case '\n':
+	case '\t':
+	case '\r':
+		break;
+	
+	default:
+		error("invalid escape character ‘%c’;", *current);
+		break;
+	}
+
+	current++;
+}
+
+bool Lexer::match(char c) {
+	if (!is_at_end() && current < (srcfile->contents + srcfile->len)) {
+		if (*(current + 1) == c) {
+			current++;
+			return true;
+		}
+	}
+	return false;
+}
+
+bool Lexer::is_at_end() {
+	if (current >= (srcfile->contents + srcfile->len) ||
+		*current == '\0') {
+		return true;
+	}
+	return false;
+}
+
+void Lexer::add(TokenType type) {
+	tokens->push_back(token_create(
+				str_intern_range(start, ++current),
+				type,
+				srcfile,
+				line, 
+				compute_column()));
+}
+
+void Lexer::add_in(TokenType type) {
+	tokens->push_back(token_create(
+				str_intern_range(start, current),
+				type,
+				srcfile,
+				line, 
+				compute_column()));
+}
+
+void Lexer::add_eof() {
+	tokens->push_back(token_create(
+				"*EOF*",
+				T_EOF,
+				srcfile,
+				line, 
+				compute_column()));
 }
 
 u64 Lexer::compute_column() {
@@ -62,10 +277,47 @@ u64 Lexer::compute_column() {
 	return column;
 }
 
+u64 Lexer::compute_column_on_current() {
+	u64 column = current - last_newline;
+	if (line == 1) {
+		column++;
+	}
+	return column;
+}
+
 void Lexer::error(const char* fmt, ...) {
 	va_list ap;
 	va_start(ap, fmt);
-	print_error_at(srcfile, line, compute_column(), fmt, ap);
+	print_error_at(srcfile, line, compute_column_on_current(), 1, fmt, ap);
 	va_end(ap);
 	error_count++;
+}
+
+void Lexer::error_at(u64 _line, u64 _column, const char* fmt, ...) {
+	va_list ap;
+	va_start(ap, fmt);
+	print_error_at(srcfile, _line, _column, 1, fmt, ap);
+	va_end(ap);
+	error_count++;
+}
+
+void Lexer::warning(const char* fmt, ...) {
+	va_list ap;
+	va_start(ap, fmt);
+	print_warning_at(srcfile, line, compute_column_on_current(), 1, fmt, ap);
+	va_end(ap);
+}
+
+void Lexer::warning_at(u64 _line, u64 _column, const char* fmt, ...) {
+	va_list ap;
+	va_start(ap, fmt);
+	print_warning_at(srcfile, _line, _column, 1, fmt, ap);
+	va_end(ap);
+}
+
+void Lexer::warning_at_rng(u64 _line, u64 _column, u64 mark_len, const char* fmt, ...) {
+	va_list ap;
+	va_start(ap, fmt);
+	print_warning_at(srcfile, _line, _column, mark_len, fmt, ap);
+	va_end(ap);
 }

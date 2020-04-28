@@ -60,7 +60,7 @@ error_code print_file_line_with_info(SourceFile* file, u64 line) {
 	return print_file_line(file, line);
 }
 
-error_code print_marker_arrow_ln(SourceFile* file, u64 line, u32 column) {
+error_code print_marker_arrow_ln(SourceFile* file, u64 line, u64 column, u64 mark_len) {
 	char* whitespace_start = get_line_at(file, line);
 	assert(whitespace_start);
 	const char* marker = whitespace_start + column - 1;
@@ -71,13 +71,17 @@ error_code print_marker_arrow_ln(SourceFile* file, u64 line, u32 column) {
 		else fprintf(stderr, " ");
 		++whitespace_start;
 	}
-	fprintf(stderr, "^\n");
+
+	for (u64 i = 0; i < mark_len; ++i) {
+		fprintf(stderr, "^");
+	}
+	fprintf(stderr, "\n");
 	return ETHER_SUCCESS;
 }
 
-error_code print_marker_arrow_with_info_ln(SourceFile* file, u64 line, u32 column) {
+error_code print_marker_arrow_with_info_ln(SourceFile* file, u64 line, u64 column, u64 mark_len) {
 	fprintf(stderr, "%6s | ", "");
-	return print_marker_arrow_ln(file, line, column);
+	return print_marker_arrow_ln(file, line, column, mark_len);
 }
 
 void print_tab(void) {
