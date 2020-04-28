@@ -10,6 +10,7 @@ struct LexerOutput {
 
 struct Lexer {
 	SourceFile* srcfile;
+	
 	std::vector<Token*>* tokens;
 	u64 error_count;
 

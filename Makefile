@@ -43,8 +43,12 @@ clean:
 	rm -rf $(BIN_FILE)
 
 loc:
-	find ether -name "*.cpp" -or \
-						-name "*.h" -or \
-						-name "*.asm" | xargs cat | wc -l
+	find $(SRC_DIR) \
+		-name "*.cpp" -or \
+		-name "*.hpp" -or \
+		-name "*.h" -or \
+		-name "*.c" -or \
+		-name "*.asm" \
+	| xargs cat | wc -l
 
 .PHONY: run clean loc

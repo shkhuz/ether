@@ -14,6 +14,8 @@
 #include <vector>
 #include <map>
 
+#include <typedef.hpp>
+
 #define true 1
 #define false 0
 #define null NULL
@@ -25,25 +27,6 @@
 #define KEYWORDS_LEN 4
 
 #define array_len(arr) (sizeof(arr) / sizeof(arr[0]))
-
-typedef unsigned int  uint;
-typedef unsigned char uchar;
-typedef signed char schar;
-
-typedef uint8_t	 u8;
-typedef uint16_t u16;
-typedef uint32_t u32;
-typedef uint64_t u64;
-
-typedef int8_t	i8;
-typedef int16_t i16;
-typedef int32_t i32;
-typedef int64_t i64;
-
-typedef float f32;
-typedef double f64;
-
-typedef int error_code;
 
 void ether_abort(const char* fmt, ...);
 void ether_abort_no_args();

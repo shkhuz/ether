@@ -3,28 +3,96 @@
 
 LexerOutput Lexer::lex(SourceFile* _srcfile) {
 	srcfile = _srcfile;
+	
 	tokens = new std::vector<Token*>();
 	error_count = 0;
+	
 	start = srcfile->contents;
 	current = start;
 	line = 1;
+	
 	last_newline = srcfile->contents;
 	last_to_last_newline = null;
 	
 	for (current = srcfile->contents; current != (srcfile->contents + srcfile->len);) {
 		start = current;
-
 		switch (*current) {
-		case ':':		match(':') ? add(T_DOUBLE_COLON) : add(T_COLON); break;
+		case '<': {
+			if (match('<')) {
+				if (match('=')) {
+					add(T_LESS_LESS_EQUAL);
+				}
+				else {
+					add(T_LESS_LESS);
+				}
+			}
+			else if (match('=')) {
+				add(T_LESS_EQUAL);
+			}
+			else {
+				add(T_LESS);
+			}
+		} break;
 
-		case '(':		add(T_LPAREN); break;
-		case ')':		add(T_RPAREN); break;
-		case '{':		add(T_LBRACE); break;
-		case '}':		add(T_RBRACE); break;
-		case ';':		add(T_SEMICOLON); break;
-		case ',':		add(T_COMMA); break;
-		case '.':		add(T_DOT); break;
-		case '\n':		newline(); break;
+		case '>': {
+			if (match('>')) {
+				if (match('=')) {
+					add(T_GREATER_GREATER_EQUAL);
+				}
+				else {
+					add(T_GREATER_GREATER);
+				}
+			}
+			else if (match('=')) {
+				add(T_GREATER_EQUAL);
+			}
+			else {
+				add(T_GREATER);
+			}
+		} break;
+
+		case '&': {
+			if (match('&')) {
+				add(T_AMPERSAND_AMPERSAND);
+			}
+			else if (match('=')) {
+				add(T_AMPERSAND_EQUAL);
+			}
+			else {
+				add(T_AMPERSAND);
+			}
+		} break;
+
+		case '|': {
+			if (match('|')) {
+				add(T_BAR_BAR);
+			}
+			else if (match('=')) {
+				add(T_BAR_EQUAL);
+			}
+			else {
+				add(T_BAR);
+			}
+		} break;
+
+		case ':':	match(':') ? add(T_DOUBLE_COLON) :   add(T_COLON); break;
+		case '+':	match('=') ? add(T_PLUS_EQUAL)   :   add(T_PLUS); break;
+		case '-':	match('=') ? add(T_MINUS_EQUAL)	 :   add(T_MINUS); break;
+		case '*':	match('=') ? add(T_ASTERISK_EQUAL) : add(T_ASTERISK); break;
+		case '/':	match('=') ? add(T_SLASH_EQUAL) :    add(T_SLASH); break;
+		case '%': 	match('=') ? add(T_PERCENT_EQUAL) :  add(T_PERCENT); break;
+		case '!':	match('=') ? add(T_BANG_EQUAL) :	 add(T_BANG); break;
+		case '=':	match('=') ? add(T_EQUAL_EQUAL) :	 add(T_EQUAL); break;
+		case '~':	match('=') ? add(T_TILDE_EQUAL) :	 add(T_TILDE); break;
+		case '.':	match('.') ? add(T_DOT_DOT) :		 add(T_DOT); break;
+
+		case '(':	add(T_LPAREN); break;
+		case ')':	add(T_RPAREN); break;
+		case '{':	add(T_LBRACE); break;
+		case '}':	add(T_RBRACE); break;
+		case ';':	add(T_SEMICOLON); break;
+		case ',':	add(T_COMMA); break;
+		case '^':	add(T_CARET); break;
 
 		case 'A': case 'B': case 'C': case 'D':
 		case 'E': case 'F': case 'G': case 'H':
@@ -64,6 +132,10 @@ LexerOutput Lexer::lex(SourceFile* _srcfile) {
 			backslash();
 			break;
 
+		case '\n':
+			newline();
+			break;
+
 		case '\t':
 		case '\r':
 		case ' ':
@@ -71,7 +143,7 @@ LexerOutput Lexer::lex(SourceFile* _srcfile) {
 			break;
 
 		default: 
-			error("invalid literal: ‘%c’ (dec: %d);", *current, (int)(*current));
+			error("invalid literal: ‘%c’ (ASCII: %d);", *current, (int)(*current));
 			current++;
 			break;
 		}
@@ -248,7 +320,8 @@ void Lexer::add(TokenType type) {
 				type,
 				srcfile,
 				line, 
-				compute_column()));
+				compute_column(),
+				current - start + 1));
 }
 
 void Lexer::add_in(TokenType type) {
@@ -257,16 +330,20 @@ void Lexer::add_in(TokenType type) {
 				type,
 				srcfile,
 				line, 
-				compute_column()));
+				compute_column(),
+				current - start));
 }
 
 void Lexer::add_eof() {
+	Token* last_token = tokens->at(tokens->size()-1);
 	tokens->push_back(token_create(
 				"*EOF*",
 				T_EOF,
 				srcfile,
-				line, 
-				compute_column()));
+				last_token->line, 
+				last_token->column +
+				last_token->char_count,
+				1));
 }
 
 u64 Lexer::compute_column() {
