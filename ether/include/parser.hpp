@@ -30,7 +30,7 @@ private:
 	Stmt* expr_stmt();
 	
 	Stmt* var_decl_create(Token* identifier, DataType* data_type, Expr* initializer);
-	Stmt* func_decl_create(Token* identifier, DataType* return_data_type, std::vector<Stmt*>* body);
+	Stmt* func_decl_create(Token* identifier, std::vector<Stmt*>* params, DataType* return_data_type, std::vector<Stmt*>* body);
 	Stmt* expr_stmt_create(Expr* expr);
 
 	Expr* expr();
@@ -52,7 +52,8 @@ private:
 	bool match_rbrace();
 	bool match_semicolon();
 	DataType* match_data_type();
-
+	void previous_data_type(DataType* data_type);
+	
 	Token* consume_identifier();
 	DataType* consume_data_type();
 	void consume_double_colon();

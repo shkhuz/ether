@@ -1,5 +1,19 @@
-main :: {
+main :: int {
 	error_stmt int;
 	1 + 2;
 	error_stmt = 1 + (2 - 3);
+	my_error char;
+	my_error2 u64 :: get_char;
+}
+
+init :: {
+}
+
+error :: false;
+error_count u64 :: 0;
+input ^char;
+tmp :: (1 + 2);
+
+add :: (a int, b int) int {
+	error :: 123;
 }

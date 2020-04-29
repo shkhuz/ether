@@ -3,6 +3,7 @@
 #include <lexer.hpp>
 #include <token.hpp>
 #include <parser.hpp>
+#include <ast_printer.hpp>
 
 error_code Compiler::compile(const char* in_file, const char* out_file) {
 	SourceFile* srcfile = read_file(in_file);
@@ -33,4 +34,7 @@ error_code Compiler::compile(const char* in_file, const char* out_file) {
 	if (parser_output.error_occured == ETHER_ERROR) {
 		ether_abort_no_args();
 	}
+
+	AstPrinter ast_printer;
+	ast_printer.print(parser_output.stmts);
 }

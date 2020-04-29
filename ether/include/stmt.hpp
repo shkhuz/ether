@@ -18,6 +18,7 @@ struct Stmt {
 	union {
 		struct {
 			Token* identifier;
+			std::vector<Stmt*>* params; // params is of type Stmt vector, to ease scope later
 			DataType* return_data_type;
 			std::vector<Stmt*>* body;
 		} func_decl;

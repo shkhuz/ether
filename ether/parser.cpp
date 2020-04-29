@@ -45,6 +45,7 @@ Stmt* Parser::decl() {
 	if (match_identifier()) {
 		Token* identifier = previous();
 		DataType* data_type = match_data_type();
+		DataType* func_data_type = null;
 		Expr* initializer = null;
 		
 		if (data_type) {
@@ -62,6 +63,51 @@ Stmt* Parser::decl() {
 		
 		else {
 			consume_double_colon();
+
+			bool has_params = false;
+			bool empty_params = false;
+			DataType* param_data_type_for_lookback = null;
+			if (match_lparen()) {
+				if (match_identifier()) {
+					if ((param_data_type_for_lookback = match_data_type())) {
+						has_params = true;
+						previous_data_type(param_data_type_for_lookback);
+					}
+					goto_previous_token();
+				}
+				else if (match_rparen()) {
+					if (match_lbrace()) {
+						has_params = true;
+						empty_params = true;
+						goto_previous_token();
+					}
+					goto_previous_token();
+				}
+				goto_previous_token();
+			}
+
+			std::vector<Stmt*>* params = null;
+			if (has_params) {
+				if (!empty_params) {
+					params = new std::vector<Stmt*>();
+					consume_lparen();
+					do {
+						Token* p_identifier = consume_identifier();
+						DataType* p_data_type = consume_data_type();
+						params->push_back(var_decl_create(
+											  p_identifier,
+											  p_data_type,
+											  null));
+					} while (match_by_type(T_COMMA));
+					consume_rparen();
+				}
+				else {
+					consume_lparen();
+					consume_rparen();
+				}
+			}
+			
+			func_data_type = match_data_type();
 			if (match_lbrace()) {
 				/* function */
 				std::vector<Stmt*>* body = null;
@@ -82,10 +128,12 @@ Stmt* Parser::decl() {
 				
 				return func_decl_create(
 					identifier,
-					null,
+					params,
+					func_data_type,
 					body);
 			}
 			else {
+				previous_data_type(func_data_type);
 				CURRENT_ERROR;
 				initializer = expr();
 				EXIT_ERROR null;
@@ -150,10 +198,11 @@ Stmt* Parser::expr_stmt() {
 
 #define STMT_CREATE(name) Stmt* name = new Stmt();
 
-Stmt* Parser::func_decl_create(Token* identifier, DataType* return_data_type, std::vector<Stmt*>* body) {
+Stmt* Parser::func_decl_create(Token* identifier, std::vector<Stmt*>* params, DataType* return_data_type, std::vector<Stmt*>* body) {
 	STMT_CREATE(stmt);
 	stmt->type = S_FUNC_DECL;
 	stmt->func_decl.identifier = identifier;
+	stmt->func_decl.params = params;
 	stmt->func_decl.return_data_type = return_data_type;
 	stmt->func_decl.body = body;
 	return stmt;
@@ -343,6 +392,18 @@ DataType* Parser::match_data_type() {
 	}
 	identifier = previous();
 	return data_type_create(identifier, pointer_count);
+}
+
+void Parser::previous_data_type(DataType* data_type) {
+	if (!data_type) {
+		return;
+	}
+
+	goto_previous_token(); // identifier
+
+	for (u8 p = 0; p < data_type->pointer_count; p++) {
+		goto_previous_token();
+	}
 }
 
 Token* Parser::consume_identifier() {
