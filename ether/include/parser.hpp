@@ -26,21 +26,40 @@ struct Parser {
 private:
 	Stmt* decl();
 
-	Stmt* var_decl_create(DataType* data_type, Token* identifier, Expr* initializer);
+	Stmt* stmt();
+	Stmt* expr_stmt();
+	
+	Stmt* var_decl_create(Token* identifier, DataType* data_type, Expr* initializer);
+	Stmt* func_decl_create(Token* identifier, DataType* return_data_type, std::vector<Stmt*>* body);
+	Stmt* expr_stmt_create(Expr* expr);
 
 	Expr* expr();
+	Expr* expr_assign();
+	Expr* expr_binary_plus_minus();
 	Expr* expr_primary();
 
+	Expr* assign_create(Expr* left, Expr* value);
+	Expr* binary_create(Expr* left, Expr* right, Token* op);
 	Expr* variable_ref_create(Token* identifier);
+	Expr* number_create(Token* number);
 	
 	bool match_identifier();
 	bool match_by_type(TokenType type);
 	bool match_double_colon();
+	bool match_lparen();
+	bool match_rparen();
+	bool match_lbrace();
+	bool match_rbrace();
+	bool match_semicolon();
 	DataType* match_data_type();
 
 	Token* consume_identifier();
 	DataType* consume_data_type();
 	void consume_double_colon();
+	void consume_lparen();
+	void consume_rparen();
+	void consume_lbrace();
+	void consume_rbrace();
 	void consume_semicolon();
 
 	void expect_by_type(TokenType type, const char* fmt, ...);
@@ -51,7 +70,9 @@ private:
 	void goto_next_token();
 	void goto_previous_token();
 
-	void error(const char* fmt, ...);
+	void error_root(u64 line, u64 column, u64 char_count, const char* fmt, va_list ap);
 	void verror(const char* fmt, va_list ap);
+	void error(const char* fmt, ...);
+	void error_expr(Expr* expr, const char* fmt, ...);
 	void sync_to_next_statement();
 }; 

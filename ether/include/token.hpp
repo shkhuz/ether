@@ -58,6 +58,8 @@ enum TokenType {
 
 struct Token {
 	char* lexeme;
+	char* start;
+	char* end;
 	TokenType type;
 	SourceFile* file;
 	u64 line;
@@ -65,4 +67,4 @@ struct Token {
 	u64 char_count;
 }; 
 
-Token* token_create(char* lexeme, TokenType type, SourceFile* file, u64 line, u64 column, u64 char_count);
+Token* token_create(char* lexeme, char* start, char* end, TokenType type, SourceFile* file, u64 line, u64 column, u64 char_count);

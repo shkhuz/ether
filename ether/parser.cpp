@@ -1,6 +1,21 @@
 #include <ether.hpp>
 #include <parser.hpp>
 
+#define CURRENT_ERROR u64 last_error_count = error_count
+#define EXIT_ERROR if (error_count > last_error_count) return
+
+#define CHECK_EOF(x) \
+if (current()->type == T_EOF) { \
+	error("unexpected end of file;"); \
+	return (x); \
+}
+
+#define CHECK_EOF_VOID_RETURN \
+if (current()->type == T_EOF) { \
+	error("unexpected end of file;"); \
+	return; \
+}
+
 ParserOutput Parser::parse(std::vector<Token*>* _tokens, SourceFile* _srcfile) {
 	tokens = _tokens;
 	srcfile = _srcfile;
@@ -31,20 +46,56 @@ Stmt* Parser::decl() {
 		Token* identifier = previous();
 		DataType* data_type = match_data_type();
 		Expr* initializer = null;
-		if (data_type != null) {
+		
+		if (data_type) {
 			if (match_double_colon()) {
+				CURRENT_ERROR;
 				initializer = expr();
+				EXIT_ERROR null;
 			}
+			consume_semicolon();
+			return var_decl_create(
+				identifier,
+				data_type,
+				initializer);
 		}
+		
 		else {
 			consume_double_colon();
-			initializer = expr();
+			if (match_lbrace()) {
+				/* function */
+				std::vector<Stmt*>* body = null;
+				bool buffer_allocated = false;
+				while (!match_rbrace()) {
+					CURRENT_ERROR;
+					Stmt* s = stmt();
+					if (s) {
+						if (!buffer_allocated) {
+							body = new std::vector<Stmt*>();
+							buffer_allocated = true;
+						}
+						body->push_back(s);
+					}
+					EXIT_ERROR null;
+					CHECK_EOF(null);
+				}
+				
+				return func_decl_create(
+					identifier,
+					null,
+					body);
+			}
+			else {
+				CURRENT_ERROR;
+				initializer = expr();
+				EXIT_ERROR null;
+				consume_semicolon();
+				return var_decl_create(
+					identifier,
+					data_type,
+					initializer);
+			}
 		}
-		consume_semicolon();
-		return var_decl_create(
-			data_type,
-			identifier,
-			initializer);
 	}
 	else {
 		error("expect top-level decl statement;");
@@ -52,37 +103,169 @@ Stmt* Parser::decl() {
 	return null;
 }
 
+Stmt* Parser::stmt() {
+	if (match_identifier()) {
+		Token* identifier = previous();
+		DataType* data_type = match_data_type();
+		Expr* initializer = null;
+		if (!data_type) {
+			if (!match_double_colon()) {
+				goto_previous_token();
+				return expr_stmt();
+			}
+			else {
+				CURRENT_ERROR;
+				initializer = expr();
+				EXIT_ERROR null;
+				consume_semicolon();
+				return var_decl_create(
+					identifier,
+					data_type,
+					initializer);				
+			}
+		}
+		
+		else {
+			if (match_double_colon()) {
+				CURRENT_ERROR;
+				initializer = expr();
+				EXIT_ERROR null;
+			}
+			consume_semicolon();
+			return var_decl_create(
+				identifier,
+				data_type,
+				initializer);
+		}
+	}
+	
+	return expr_stmt();
+}
+
+Stmt* Parser::expr_stmt() {
+	Expr* e = expr();
+	consume_semicolon();
+	return expr_stmt_create(e);
+}
+
 #define STMT_CREATE(name) Stmt* name = new Stmt();
 
-Stmt* Parser::var_decl_create(DataType* data_type, Token* identifier, Expr* initializer) {
+Stmt* Parser::func_decl_create(Token* identifier, DataType* return_data_type, std::vector<Stmt*>* body) {
+	STMT_CREATE(stmt);
+	stmt->type = S_FUNC_DECL;
+	stmt->func_decl.identifier = identifier;
+	stmt->func_decl.return_data_type = return_data_type;
+	stmt->func_decl.body = body;
+	return stmt;
+}
+
+Stmt* Parser::var_decl_create(Token* identifier, DataType* data_type, Expr* initializer) {
 	STMT_CREATE(stmt);
 	stmt->type = S_VAR_DECL;
-	stmt->var_decl.data_type = data_type;
 	stmt->var_decl.identifier = identifier;
+	stmt->var_decl.data_type = data_type;
 	stmt->var_decl.initializer = initializer;
 	return stmt;
 }
 
+Stmt* Parser::expr_stmt_create(Expr* expr) {
+	STMT_CREATE(stmt);
+	stmt->type = S_EXPR_STMT;
+	stmt->expr_stmt = expr;
+	return stmt;
+}
+
 Expr* Parser::expr() {
-	return expr_primary();
+	return expr_assign();
+}
+
+Expr* Parser::expr_assign() {
+	Expr* left = expr_binary_plus_minus();
+	if (match_by_type(T_EQUAL)) {
+		Expr* value = expr_assign();
+
+		if (left->type == E_VARIABLE_REF) {
+			return assign_create(left, value);
+		}
+		error_expr(left, "invalid assignment target;");
+		return null;
+	}
+	return left;
+}
+
+Expr* Parser::expr_binary_plus_minus() {
+	Expr* left = expr_primary();
+	while (match_by_type(T_PLUS) ||
+		   match_by_type(T_MINUS)) {
+		Token* op = previous();
+		Expr* right = expr_binary_plus_minus();
+
+		left = binary_create(left, right, op);
+	}
+	return left;
 }
 
 Expr* Parser::expr_primary() {
 	if (match_identifier()) {
 		return variable_ref_create(previous());
 	}
+	else if (match_by_type(T_INTEGER) ||
+			 match_by_type(T_FLOAT32) ||
+			 match_by_type(T_FLOAT64)) {
+		return number_create(previous());
+	}
+	else if (match_lparen()) {
+		CURRENT_ERROR;
+		Expr* e = expr();
+		EXIT_ERROR null;
+		CHECK_EOF(null);
+		consume_rparen();
+		return e;
+	}
 	else {
 		error("unknown expression;");
 	}
+	return null;
 }
 
 #define EXPR_CREATE(name) Expr* name = new Expr();
+
+Expr* Parser::assign_create(Expr* left, Expr* value) {
+	EXPR_CREATE(expr);
+	expr->type = E_ASSIGN;
+	expr->head = left->head;
+	expr->tail = value->tail;
+	expr->assign.left = left;
+	expr->assign.value = value;
+	return expr;
+}
+
+Expr* Parser::binary_create(Expr* left, Expr* right, Token* op) {
+	EXPR_CREATE(expr);
+	expr->type = E_BINARY;
+	expr->head = left->head;
+	expr->tail = right->tail;
+	expr->binary.left = left;
+	expr->binary.right = right;
+	expr->binary.op = op;
+	return expr;
+}
 
 Expr* Parser::variable_ref_create(Token* identifier) {
 	EXPR_CREATE(expr);
 	expr->type = E_VARIABLE_REF;
 	expr->head = identifier;
+	expr->tail = identifier;
 	expr->variable_ref.identifier = identifier;
+	return expr;
+}
+
+Expr* Parser::number_create(Token* number) {
+	EXPR_CREATE(expr);
+	expr->type = E_NUMBER;
+	expr->head = number;
+	expr->tail = number;
+	expr->number = number;
 	return expr;
 }
 
@@ -103,6 +286,41 @@ bool Parser::match_by_type(TokenType type) {
 
 bool Parser::match_double_colon() {
 	if (match_by_type(T_DOUBLE_COLON)) {
+		return true;
+	}
+	return false;
+}
+
+bool Parser::match_lparen() {
+	if (match_by_type(T_LPAREN)) {
+		return true;
+	}
+	return false;
+}
+
+bool Parser::match_rparen() {
+	if (match_by_type(T_RPAREN)) {
+		return true;
+	}
+	return false;
+}
+
+bool Parser::match_lbrace() {
+	if (match_by_type(T_LBRACE)) {
+		return true;
+	}
+	return false;
+}
+
+bool Parser::match_rbrace() {
+	if (match_by_type(T_RBRACE)) {
+		return true;
+	}
+	return false;
+}
+
+bool Parser::match_semicolon() {
+	if (match_by_type(T_SEMICOLON)) {
 		return true;
 	}
 	return false;
@@ -143,6 +361,22 @@ DataType* Parser::consume_data_type() {
 
 void Parser::consume_double_colon() {
 	expect_by_type(T_DOUBLE_COLON, "expect ‘::’;"); 
+}
+
+void Parser::consume_lparen() {
+	expect_by_type(T_LPAREN, "expect ‘(’;"); 
+}
+
+void Parser::consume_rparen() {
+	expect_by_type(T_RPAREN, "expect ‘)’;"); 
+}
+
+void Parser::consume_lbrace() {
+	expect_by_type(T_LBRACE, "expect ‘{’;"); 
+}
+
+void Parser::consume_rbrace() {
+	expect_by_type(T_RBRACE, "expect ‘}’;"); 
 }
 
 void Parser::consume_semicolon() {
@@ -187,25 +421,46 @@ void Parser::goto_previous_token() {
 	}
 }
 
+void Parser::error_root(u64 line, u64 column, u64 char_count, const char* fmt, va_list ap) {
+	print_error_at(
+		srcfile,
+		line,
+		column,
+		char_count,
+		fmt,
+		ap);
+	sync_to_next_statement();
+	error_count++;
+}
+
 void Parser::verror(const char* fmt, va_list ap) {
 	va_list aq;
 	va_copy(aq, ap);
-	print_error_at(
-		srcfile,
+	error_root(
 		current()->line,
 		current()->column,
 		current()->char_count,
 		fmt,
 		aq);
 	va_end(aq);
-	sync_to_next_statement();
-	error_count++;
 }
 
 void Parser::error(const char* fmt, ...) {
 	va_list ap;
 	va_start(ap, fmt);
 	verror(fmt, ap);
+	va_end(ap);
+}
+
+void Parser::error_expr(Expr* expr, const char* fmt, ...) {
+	u64 char_count = get_expr_char_count(expr);
+	va_list ap;
+	va_start(ap, fmt);
+	error_root(expr->head->line,
+			   expr->head->column,
+			   char_count,
+			   fmt,
+			   ap);
 	va_end(ap);
 }
 

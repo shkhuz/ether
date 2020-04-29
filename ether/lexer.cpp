@@ -317,6 +317,8 @@ bool Lexer::is_at_end() {
 void Lexer::add(TokenType type) {
 	tokens->push_back(token_create(
 				str_intern_range(start, ++current),
+				start,
+				current,
 				type,
 				srcfile,
 				line, 
@@ -327,6 +329,8 @@ void Lexer::add(TokenType type) {
 void Lexer::add_in(TokenType type) {
 	tokens->push_back(token_create(
 				str_intern_range(start, current),
+				start,
+				current,
 				type,
 				srcfile,
 				line, 
@@ -338,6 +342,8 @@ void Lexer::add_eof() {
 	Token* last_token = tokens->at(tokens->size()-1);
 	tokens->push_back(token_create(
 				"*EOF*",
+				last_token->end,
+				last_token->end,
 				T_EOF,
 				srcfile,
 				last_token->line, 

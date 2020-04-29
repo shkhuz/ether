@@ -1,3 +1,5 @@
-error_stmt :: global_stmt;
-main :: qw;
-cool ::
+main :: {
+	error_stmt int;
+	1 + 2;
+	error_stmt = 1 + (2 - 3);
+}
