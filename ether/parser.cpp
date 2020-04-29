@@ -67,6 +67,7 @@ Stmt* Parser::decl() {
 			bool has_params = false;
 			bool empty_params = false;
 			DataType* param_data_type_for_lookback = null;
+			DataType* func_data_type_for_lookback = null;
 			if (match_lparen()) {
 				if (match_identifier()) {
 					if ((param_data_type_for_lookback = match_data_type())) {
@@ -76,10 +77,13 @@ Stmt* Parser::decl() {
 					goto_previous_token();
 				}
 				else if (match_rparen()) {
-					if (match_lbrace()) {
-						has_params = true;
-						empty_params = true;
-						goto_previous_token();
+					if ((func_data_type_for_lookback = match_data_type())) {
+						if (match_lbrace()) {
+							has_params = true;
+							empty_params = true;
+							goto_previous_token();
+						}
+						previous_data_type(func_data_type_for_lookback);
 					}
 					goto_previous_token();
 				}
@@ -106,10 +110,22 @@ Stmt* Parser::decl() {
 					consume_rparen();
 				}
 			}
-			
-			func_data_type = match_data_type();
+
+			if (has_params) {
+				if (!(func_data_type = match_data_type())) {
+					if (!match_lbrace()) {
+						error("expect function return type;");
+						goto got_lbrace;
+					}
+				}
+			}
+			else {
+				func_data_type = match_data_type();
+			}
+
 			if (match_lbrace()) {
 				/* function */
+			got_lbrace:
 				std::vector<Stmt*>* body = null;
 				bool buffer_allocated = false;
 				while (!match_rbrace()) {

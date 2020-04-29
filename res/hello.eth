@@ -1,3 +1,7 @@
+operate :: (system ^System) int {
+
+}
+
 main :: int {
 	error_stmt int;
 	1 + 2;
