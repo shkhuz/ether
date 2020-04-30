@@ -50,6 +50,8 @@ private:
 	bool match_rparen();
 	bool match_lbrace();
 	bool match_rbrace();
+	bool match_lbracket();
+	bool match_rbracket();
 	bool match_semicolon();
 	DataType* match_data_type();
 	void previous_data_type(DataType* data_type);
@@ -61,6 +63,8 @@ private:
 	void consume_rparen();
 	void consume_lbrace();
 	void consume_rbrace();
+	void consume_lbracket();
+	void consume_rbracket();
 	void consume_semicolon();
 
 	void expect_by_type(TokenType type, const char* fmt, ...);

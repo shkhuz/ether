@@ -90,6 +90,8 @@ LexerOutput Lexer::lex(SourceFile* _srcfile) {
 		case ')':	add(T_RPAREN); break;
 		case '{':	add(T_LBRACE); break;
 		case '}':	add(T_RBRACE); break;
+		case '[':	add(T_LBRACKET); break;
+		case ']':	add(T_RBRACKET); break;	
 		case ';':	add(T_SEMICOLON); break;
 		case ',':	add(T_COMMA); break;
 		case '^':	add(T_CARET); break;

@@ -117,6 +117,11 @@ void AstPrinter::print_binary(Expr* expr) {
 }
 
 void AstPrinter::print_data_type(DataType* data_type) {
+	if (data_type->is_array) {
+		print_char('[');
+		print_token(data_type->array_elem_count);
+		print_char(']');
+	}
 	for (u8 i = 0; i < data_type->pointer_count; ++i) {
 		print_char('^');
 	}

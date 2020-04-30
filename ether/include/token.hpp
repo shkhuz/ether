@@ -13,6 +13,8 @@ enum TokenType {
 	T_RPAREN,
 	T_LBRACE,
 	T_RBRACE,
+	T_LBRACKET,
+	T_RBRACKET,
 	T_PLUS,
 	T_MINUS,
 	T_ASTERISK,

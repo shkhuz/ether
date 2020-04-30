@@ -44,7 +44,12 @@ ParserOutput Parser::parse(std::vector<Token*>* _tokens, SourceFile* _srcfile) {
 Stmt* Parser::decl() {
 	if (match_identifier()) {
 		Token* identifier = previous();
-		DataType* data_type = match_data_type();
+		DataType* data_type;
+		{
+			CURRENT_ERROR;
+			data_type = match_data_type();
+			EXIT_ERROR null;
+		}
 		DataType* func_data_type = null;
 		Expr* initializer = null;
 		
@@ -68,36 +73,42 @@ Stmt* Parser::decl() {
 			bool empty_params = false;
 			DataType* param_data_type_for_lookback = null;
 			DataType* func_data_type_for_lookback = null;
-			if (match_lparen()) {
-				if (match_identifier()) {
-					if ((param_data_type_for_lookback = match_data_type())) {
-						has_params = true;
-						previous_data_type(param_data_type_for_lookback);
-					}
-					goto_previous_token();
-				}
-				else if (match_rparen()) {
-					if ((func_data_type_for_lookback = match_data_type())) {
-						if (match_lbrace()) {
+			{
+				CURRENT_ERROR;
+				if (match_lparen()) {
+					if (match_identifier()) {
+						if ((param_data_type_for_lookback = match_data_type())) {
 							has_params = true;
-							empty_params = true;
-							goto_previous_token();
+							previous_data_type(param_data_type_for_lookback);
 						}
-						previous_data_type(func_data_type_for_lookback);
+						goto_previous_token();
+					}
+					else if (match_rparen()) {
+						if ((func_data_type_for_lookback = match_data_type())) {
+							if (match_lbrace()) {
+								has_params = true;
+								empty_params = true;
+								goto_previous_token();
+							}
+							previous_data_type(func_data_type_for_lookback);
+						}
+						goto_previous_token();
 					}
 					goto_previous_token();
 				}
-				goto_previous_token();
+				EXIT_ERROR null;
 			}
-
+			
 			std::vector<Stmt*>* params = null;
 			if (has_params) {
 				if (!empty_params) {
 					params = new std::vector<Stmt*>();
 					consume_lparen();
 					do {
+						CURRENT_ERROR;
 						Token* p_identifier = consume_identifier();
 						DataType* p_data_type = consume_data_type();
+						EXIT_ERROR null;
 						params->push_back(var_decl_create(
 											  p_identifier,
 											  p_data_type,
@@ -384,6 +395,20 @@ bool Parser::match_rbrace() {
 	return false;
 }
 
+bool Parser::match_lbracket() {
+	if (match_by_type(T_LBRACKET)) {
+		return true;
+	}
+	return false;
+}
+
+bool Parser::match_rbracket() {
+	if (match_by_type(T_RBRACKET)) {
+		return true;
+	}
+	return false;
+}
+
 bool Parser::match_semicolon() {
 	if (match_by_type(T_SEMICOLON)) {
 		return true;
@@ -392,6 +417,25 @@ bool Parser::match_semicolon() {
 }
 
 DataType* Parser::match_data_type() {
+	bool is_array = false;
+	Token* array_elem_count = null;
+
+	if (match_lbracket()) {
+		is_array = true;
+		if (!match_by_type(T_INTEGER)) {
+			if (current()->type == T_RBRACKET) {
+				error("unspecified array length; ");
+				return null;
+			}
+			else {
+				error("expect integer literal (size should be known at compile-time);");
+				return null;
+			}
+		}
+		array_elem_count = previous();
+		consume_rbracket();
+	}
+	
 	u8 pointer_count = 0;
 	bool pre_type_matched = false;
 	while (match_by_type(T_CARET)) {
@@ -403,11 +447,15 @@ DataType* Parser::match_data_type() {
 	if (!match_identifier()) {
 		if (pre_type_matched) {
 			error("expect type name;");
+			return null;
 		}
 		return null;
 	}
 	identifier = previous();
-	return data_type_create(identifier, pointer_count);
+	return data_type_create(identifier,
+							pointer_count,
+							is_array,
+							array_elem_count);
 }
 
 void Parser::previous_data_type(DataType* data_type) {
@@ -420,6 +468,12 @@ void Parser::previous_data_type(DataType* data_type) {
 	for (u8 p = 0; p < data_type->pointer_count; p++) {
 		goto_previous_token();
 	}
+
+	if (data_type->is_array) {
+		goto_previous_token();
+		goto_previous_token();
+		goto_previous_token();
+	}
 }
 
 Token* Parser::consume_identifier() {
@@ -428,7 +482,9 @@ Token* Parser::consume_identifier() {
 }
 
 DataType* Parser::consume_data_type() {
+	CURRENT_ERROR;
 	DataType* data_type = match_data_type();
+	EXIT_ERROR null;
 	if (data_type == null) {
 		error("expect data type;");
 		return null;
@@ -454,6 +510,14 @@ void Parser::consume_lbrace() {
 
 void Parser::consume_rbrace() {
 	expect_by_type(T_RBRACE, "expect ‘}’;"); 
+}
+
+void Parser::consume_lbracket() {
+	expect_by_type(T_LBRACKET, "expect ‘[’;"); 
+}
+
+void Parser::consume_rbracket() {
+	expect_by_type(T_RBRACKET, "expect ‘]’;"); 
 }
 
 void Parser::consume_semicolon() {
@@ -542,9 +606,21 @@ void Parser::error_expr(Expr* expr, const char* fmt, ...) {
 }
 
 void Parser::sync_to_next_statement() {
+	bool skip_function = false;
 	while (current()->type != T_SEMICOLON &&
 		   current()->type != T_EOF) {
+		if (current()->type == T_LBRACE) {
+			skip_function = true;
+			break;
+		}
 		goto_next_token();
+	}
+
+	if (skip_function) {
+		while (current()->type != T_RBRACE &&
+			   current()->type != T_EOF) {
+			goto_next_token();
+		}
 	}
 	goto_next_token();
 }
