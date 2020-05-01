@@ -317,41 +317,50 @@ bool Lexer::is_at_end() {
 }
 
 void Lexer::add(TokenType type) {
-	tokens->push_back(token_create(
-				str_intern_range(start, ++current),
-				start,
-				current,
-				type,
-				srcfile,
-				line, 
-				compute_column(),
-				current - start + 1));
+	current++;
+	add_in(type);
 }
 
 void Lexer::add_in(TokenType type) {
 	tokens->push_back(token_create(
-				str_intern_range(start, current),
-				start,
-				current,
-				type,
-				srcfile,
-				line, 
-				compute_column(),
-				current - start));
+						  str_intern_range(start, current),
+						  start,
+						  current,
+						  type,
+						  srcfile,
+						  line, 
+						  compute_column(),
+						  current - start));
 }
 
 void Lexer::add_eof() {
-	Token* last_token = tokens->at(tokens->size()-1);
-	tokens->push_back(token_create(
-				"*EOF*",
-				last_token->end,
-				last_token->end,
-				T_EOF,
-				srcfile,
-				last_token->line, 
-				last_token->column +
-				last_token->char_count,
-				1));
+	Token* last_token = null;
+	char* eof_string = "*EOF*";
+	if (!tokens->empty()) {
+		last_token = tokens->at(tokens->size()-1);
+		tokens->push_back(token_create(
+							  eof_string,
+							  last_token->end,
+							  last_token->end,
+							  T_EOF,
+							  srcfile,
+							  last_token->line, 
+							  last_token->column +
+							  last_token->char_count,
+							  1));
+	}
+	
+	else {
+		tokens->push_back(token_create(
+							  eof_string,
+							  null,
+							  null,
+							  T_EOF,
+							  srcfile,
+							  1,
+							  1,
+							  1));
+	}
 }
 
 u64 Lexer::compute_column() {

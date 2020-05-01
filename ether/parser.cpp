@@ -3,28 +3,66 @@
 
 #define CURRENT_ERROR u64 last_error_count = error_count
 #define EXIT_ERROR if (error_count > last_error_count) return
+#define CONTINUE_ERROR if (error_count > last_error_count) continue
 
-#define CHECK_EOF(x) \
-if (current()->type == T_EOF) { \
-	error("unexpected end of file;"); \
-	return (x); \
-}
+#define CHECK_EOF(x)							\
+	if (current()->type == T_EOF) {				\
+		error("unexpected end of file;");		\
+		return (x);								\
+	}
 
-#define CHECK_EOF_VOID_RETURN \
-if (current()->type == T_EOF) { \
-	error("unexpected end of file;"); \
-	return; \
-}
+#define CHECK_EOF_VOID_RETURN					\
+	if (current()->type == T_EOF) {				\
+		error("unexpected end of file;");		\
+		return;									\
+	}
+
+#define CONSUME_IDENTIFIER(name)				\
+	Token* name = null;							\
+	{											\
+		CURRENT_ERROR;							\
+		name = consume_identifier();			\
+		EXIT_ERROR null;						\
+	}
+
+#define CONSUME_DATA_TYPE(name)					\
+	DataType* name = null;						\
+	{											\
+		CURRENT_ERROR;							\
+		name = consume_data_type();				\
+		EXIT_ERROR null;						\
+	}
+
+#define CONSUME_IDENTIFIER_CON(name)			\
+	Token* name = null;							\
+	{											\
+		CURRENT_ERROR;							\
+		name = consume_identifier();			\
+		CONTINUE_ERROR;							\
+	}
+
+#define CONSUME_DATA_TYPE_CON(name)				\
+	DataType* name = null;						\
+	{											\
+		CURRENT_ERROR;							\
+		name = consume_data_type();				\
+		CONTINUE_ERROR;							\
+	}
 
 ParserOutput Parser::parse(std::vector<Token*>* _tokens, SourceFile* _srcfile) {
 	tokens = _tokens;
 	srcfile = _srcfile;
 	
 	stmts = new std::vector<Stmt*>();
-	error_count = 0;
-	
+		
 	token_idx = 0;
 	tokens_len = tokens->size();
+	
+	error_count = 0;
+	error_panic = false;
+	error_loc = GLOBAL;
+	error_brace_count = 0;
+	error_lbrace_parsed = false;
 
 	while (current()->type != T_EOF) {
 		Stmt* stmt = decl();
@@ -42,6 +80,11 @@ ParserOutput Parser::parse(std::vector<Token*>* _tokens, SourceFile* _srcfile) {
 }
 
 Stmt* Parser::decl() {
+	if (error_panic) {
+		sync_to_next_statement();
+		return null;
+	}
+	
 	if (match_identifier()) {
 		Token* identifier = previous();
 		DataType* data_type;
@@ -54,6 +97,7 @@ Stmt* Parser::decl() {
 		Expr* initializer = null;
 		
 		if (data_type) {
+			error_loc = GLOBAL;
 			if (match_double_colon()) {
 				CURRENT_ERROR;
 				initializer = expr();
@@ -100,15 +144,14 @@ Stmt* Parser::decl() {
 			}
 			
 			std::vector<Stmt*>* params = null;
+			error_loc = FUNCTION_HEADER;
 			if (has_params) {
 				if (!empty_params) {
 					params = new std::vector<Stmt*>();
 					consume_lparen();
 					do {
-						CURRENT_ERROR;
-						Token* p_identifier = consume_identifier();
-						DataType* p_data_type = consume_data_type();
-						EXIT_ERROR null;
+						CONSUME_IDENTIFIER(p_identifier);
+						CONSUME_DATA_TYPE(p_data_type);
 						params->push_back(var_decl_create(
 											  p_identifier,
 											  p_data_type,
@@ -137,11 +180,13 @@ Stmt* Parser::decl() {
 			if (match_lbrace()) {
 				/* function */
 			got_lbrace:
+				error_loc = FUNCTION_BODY;
 				std::vector<Stmt*>* body = null;
 				bool buffer_allocated = false;
 				while (!match_rbrace()) {
 					CURRENT_ERROR;
 					Stmt* s = stmt();
+					CONTINUE_ERROR;
 					if (s) {
 						if (!buffer_allocated) {
 							body = new std::vector<Stmt*>();
@@ -149,7 +194,6 @@ Stmt* Parser::decl() {
 						}
 						body->push_back(s);
 					}
-					EXIT_ERROR null;
 					CHECK_EOF(null);
 				}
 				
@@ -160,6 +204,7 @@ Stmt* Parser::decl() {
 					body);
 			}
 			else {
+				error_loc = GLOBAL;
 				previous_data_type(func_data_type);
 				CURRENT_ERROR;
 				initializer = expr();
@@ -172,13 +217,52 @@ Stmt* Parser::decl() {
 			}
 		}
 	}
+	else if (match_keyword("struct")) {
+		error_loc = STRUCT_HEADER;
+		Token* identifier = null;
+		{
+			CURRENT_ERROR;
+			identifier = consume_identifier();
+			EXIT_ERROR null;
+		}
+		consume_lbrace();
+
+		error_loc = STRUCT_BODY;
+		std::vector<Stmt*>* fields = null;
+		bool field_buffer_initialized = false;
+		while (!match_rbrace()) {
+			if (!field_buffer_initialized) {
+				fields = new std::vector<Stmt*>();
+				field_buffer_initialized = true;
+			}
+
+			CONSUME_IDENTIFIER_CON(f_identifier);
+			CONSUME_DATA_TYPE_CON(f_data_type);
+			consume_semicolon();
+			
+
+			fields->push_back(var_decl_create(
+								  f_identifier,
+								  f_data_type,
+								  null));
+		}
+		return struct_create(identifier,
+							 fields);
+	}	
 	else {
 		error("expect top-level decl statement;");
 	}
+
 	return null;
 }
 
 Stmt* Parser::stmt() {
+	if (error_panic) {
+		sync_to_next_statement();
+		return null;
+	}
+	
+	error_loc = FUNCTION_BODY;
 	if (match_identifier()) {
 		Token* identifier = previous();
 		DataType* data_type = match_data_type();
@@ -191,8 +275,8 @@ Stmt* Parser::stmt() {
 			else {
 				CURRENT_ERROR;
 				initializer = expr();
-				EXIT_ERROR null;
 				consume_semicolon();
+				EXIT_ERROR null;
 				return var_decl_create(
 					identifier,
 					data_type,
@@ -213,7 +297,6 @@ Stmt* Parser::stmt() {
 				initializer);
 		}
 	}
-	
 	return expr_stmt();
 }
 
@@ -223,7 +306,15 @@ Stmt* Parser::expr_stmt() {
 	return expr_stmt_create(e);
 }
 
-#define STMT_CREATE(name) Stmt* name = new Stmt();
+#define STMT_CREATE(name) Stmt* name = new Stmt; 
+
+Stmt* Parser::struct_create(Token* identifier, std::vector<Stmt*>* fields) {
+	STMT_CREATE(stmt);
+	stmt->type = S_STRUCT;
+	stmt->struct_stmt.identifier = identifier;
+	stmt->struct_stmt.fields = fields;
+	return stmt;
+}
 
 Stmt* Parser::func_decl_create(Token* identifier, std::vector<Stmt*>* params, DataType* return_data_type, std::vector<Stmt*>* body) {
 	STMT_CREATE(stmt);
@@ -283,12 +374,42 @@ Expr* Parser::expr_binary_plus_minus() {
 
 Expr* Parser::expr_primary() {
 	if (match_identifier()) {
-		return variable_ref_create(previous());
-	}
+		Token* identifier = previous();
+		if (match_lparen()) {
+			std::vector<Expr*>* args = null;
+			bool args_buffer_initialized = false;
+			if (!match_rparen()) {
+				do {
+					if (!args_buffer_initialized) {
+						args = new std::vector<Expr*>();
+						args_buffer_initialized = true;
+					}
+
+					CURRENT_ERROR;
+					Expr* arg = expr();
+					EXIT_ERROR null;
+
+					args->push_back(arg);
+				} while (match_by_type(T_COMMA));
+				consume_rparen();
+			}
+			return func_call_create(identifier,
+									args);
+		}
+		else {
+			return variable_ref_create(identifier);
+		}
+	}	
 	else if (match_by_type(T_INTEGER) ||
 			 match_by_type(T_FLOAT32) ||
 			 match_by_type(T_FLOAT64)) {
 		return number_create(previous());
+	}
+	else if (match_by_type(T_STRING)) {
+		return string_create(previous());
+	}
+	else if (match_by_type(T_CHAR)) {
+		return char_create(previous());
 	}
 	else if (match_lparen()) {
 		CURRENT_ERROR;
@@ -327,6 +448,21 @@ Expr* Parser::binary_create(Expr* left, Expr* right, Token* op) {
 	return expr;
 }
 
+Expr* Parser::func_call_create(Token* callee, std::vector<Expr*>* args) {
+	EXPR_CREATE(expr);
+	expr->type = E_FUNC_CALL;
+	expr->head = callee;
+	if (args == null) {
+		expr->tail = callee;
+	}
+	else {
+		expr->tail = args->at(args->size()-1)->tail;
+	}
+	expr->func_call.callee = callee;
+	expr->func_call.args = args;
+	return expr;
+}
+
 Expr* Parser::variable_ref_create(Token* identifier) {
 	EXPR_CREATE(expr);
 	expr->type = E_VARIABLE_REF;
@@ -345,9 +481,40 @@ Expr* Parser::number_create(Token* number) {
 	return expr;
 }
 
+Expr* Parser::string_create(Token* string) {
+	EXPR_CREATE(expr);
+	expr->type = E_STRING;
+	expr->head = string;
+	expr->tail = string;
+	expr->string = string;
+	return expr;
+}
+
+Expr* Parser::char_create(Token* chr) {
+	EXPR_CREATE(expr);
+	expr->type = E_CHAR;
+	expr->head = chr;
+	expr->tail = chr;
+	expr->chr = chr;
+	return expr;
+}
+
 bool Parser::match_identifier() {
 	if (match_by_type(T_IDENTIFIER)) {
 		return true;
+	}
+	return false;
+}
+
+bool Parser::match_keyword(char* keyword) {
+	if (current()->type == T_KEYWORD) {
+		for (u64 i = 0; i < KEYWORDS_LEN; ++i) {
+			if (str_intern(keyword) ==
+				str_intern(keywords[i])) {
+				goto_next_token();
+				return true;
+			}
+		}
 	}
 	return false;
 }
@@ -563,6 +730,13 @@ void Parser::goto_previous_token() {
 }
 
 void Parser::error_root(u64 line, u64 column, u64 char_count, const char* fmt, va_list ap) {
+	if (error_panic) {
+		error_count++;		
+		sync_to_next_statement();
+		return;
+	}
+	error_panic = true;
+	
 	print_error_at(
 		srcfile,
 		line,
@@ -571,7 +745,7 @@ void Parser::error_root(u64 line, u64 column, u64 char_count, const char* fmt, v
 		fmt,
 		ap);
 	sync_to_next_statement();
-	error_count++;
+	error_count++;		
 }
 
 void Parser::verror(const char* fmt, va_list ap) {
@@ -606,21 +780,38 @@ void Parser::error_expr(Expr* expr, const char* fmt, ...) {
 }
 
 void Parser::sync_to_next_statement() {
-	bool skip_function = false;
-	while (current()->type != T_SEMICOLON &&
-		   current()->type != T_EOF) {
+	switch (error_loc) {
+	case GLOBAL:
+	case FUNCTION_BODY:
+	case STRUCT_BODY:
+		if (match_semicolon()) {
+			error_panic = false;
+			error_brace_count = 0;
+			error_lbrace_parsed = false;
+			return;
+		}
+		break;
+		
+	case STRUCT_HEADER:
+	case FUNCTION_HEADER:
 		if (current()->type == T_LBRACE) {
-			skip_function = true;
-			break;
+			if (!error_lbrace_parsed) {
+				error_lbrace_parsed = true;
+			}
+			error_brace_count++;
 		}
-		goto_next_token();
-	}
-
-	if (skip_function) {
-		while (current()->type != T_RBRACE &&
-			   current()->type != T_EOF) {
+		else if (current()->type == T_RBRACE) {
+			error_brace_count--;
+		}
+		
+		if (error_brace_count == 0 && error_lbrace_parsed) {
+			error_panic = false;
+			error_brace_count = 0;
+			error_lbrace_parsed = false;
 			goto_next_token();
+			return;
 		}
+		break;
 	}
 	goto_next_token();
 }

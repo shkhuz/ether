@@ -13,6 +13,7 @@ struct AstPrinter {
 
 private:
 	void print_stmt(Stmt* stmt);
+	void print_struct_stmt(Stmt* stmt);
 	void print_func_decl(Stmt* stmt);
 	void print_var_decl(Stmt* stmt);
 	void print_expr_stmt(Stmt* stmt);
@@ -20,6 +21,9 @@ private:
 	void print_expr(Expr* expr);
 	void print_assign(Expr* expr);
 	void print_binary(Expr* expr);
+	void print_func_call(Expr* expr);
+	void print_string(Expr* expr);
+	void print_char(Expr* expr);
 
 	void print_data_type(DataType* data_type);
 	void print_token(Token* token);

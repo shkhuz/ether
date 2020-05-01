@@ -24,7 +24,7 @@ run: $(BIN_FILE)
 	gcc -o $(BIN_DIR)/a.out res/hello.o -Wl,--dynamic-linker=/usr/lib64/ld-linux-x86-64.so.2 
 
 debug: $(BIN_FILE)
-	gdb --args $(BIN_FILE) -o hello res/hello.eth
+	gdb -x gdb_init --args $(BIN_FILE) -o hello res/hello.eth
 
 $(BIN_FILE): $(OBJ_FILES)
 	mkdir -p $(dir $@)

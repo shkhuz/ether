@@ -11,15 +11,28 @@ struct ParserOutput {
 	error_code error_occured;
 };
 
+enum ParserErrorLocation {
+	STRUCT_HEADER,
+	STRUCT_BODY,
+	FUNCTION_HEADER,
+	FUNCTION_BODY,
+	GLOBAL,
+};
+
 struct Parser {
 	std::vector<Token*>* tokens;
 	SourceFile* srcfile;
 
 	std::vector<Stmt*>* stmts;
-	u64 error_count;
-
+	
 	u64 token_idx;
 	u64 tokens_len;
+
+	u64 error_count;
+	bool error_panic;
+	ParserErrorLocation error_loc;
+	u64 error_brace_count;
+	bool error_lbrace_parsed = false;
 	
 	ParserOutput parse(std::vector<Token*>* _tokens, SourceFile* _srcfile);
 
@@ -28,9 +41,10 @@ private:
 
 	Stmt* stmt();
 	Stmt* expr_stmt();
-	
-	Stmt* var_decl_create(Token* identifier, DataType* data_type, Expr* initializer);
+
+	Stmt* struct_create(Token* identifier, std::vector<Stmt*>* fields);
 	Stmt* func_decl_create(Token* identifier, std::vector<Stmt*>* params, DataType* return_data_type, std::vector<Stmt*>* body);
+	Stmt* var_decl_create(Token* identifier, DataType* data_type, Expr* initializer);
 	Stmt* expr_stmt_create(Expr* expr);
 
 	Expr* expr();
@@ -40,10 +54,14 @@ private:
 
 	Expr* assign_create(Expr* left, Expr* value);
 	Expr* binary_create(Expr* left, Expr* right, Token* op);
+	Expr* func_call_create(Token* callee, std::vector<Expr*>* args);
 	Expr* variable_ref_create(Token* identifier);
 	Expr* number_create(Token* number);
+	Expr* string_create(Token* string);
+	Expr* char_create(Token* chr);
 	
 	bool match_identifier();
+	bool match_keyword(char* keyword);
 	bool match_by_type(TokenType type);
 	bool match_double_colon();
 	bool match_lparen();

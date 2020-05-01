@@ -26,6 +26,8 @@
 #define TAB_SIZE 4
 #define KEYWORDS_LEN 4
 
+#define PRINT_TOKEN 0
+
 #define array_len(arr) (sizeof(arr) / sizeof(arr[0]))
 
 void ether_abort(const char* fmt, ...);

@@ -1,23 +1,28 @@
-operate :: (system ^System) int {
-
-}
-
-main :: int {
-	error_stmt int;
-	1 + 2;
-	error_stmt = 1 + (2 - 3);
-	my_error char;
-	my_error2 u64 :: get_char;
+main :: {
+	init();
+	123;
+	get_error( ;
+	hello();
+	123;
 }
 
 init :: {
+	puts("initializing...", '3', 'a');
+
+	error_stmt :: get_error_stmt();
+
+	error :: init();
+	error :: init();
 }
 
-error :: false;
-error_count u64 :: 0;
-input ^char;
-tmp :: (1 + 2);
-
-add :: (a [100]int, b []int) int {
-	error :: 123;
+struct new {
+	init;
+	a wq;
+	b wq;
 }
+
+add :: (a int, b ) 123 {
+	error :: ;
+}
+
+error :: ;

@@ -16,6 +16,9 @@ void AstPrinter::print_stmt(Stmt* stmt) {
 	print_tabs_by_indentation();
 	print_string("└─ ");
 	switch (stmt->type) {
+	case S_STRUCT:
+		print_struct_stmt(stmt);
+		break;
 	case S_FUNC_DECL:
 		print_func_decl(stmt);
 		break;
@@ -27,6 +30,20 @@ void AstPrinter::print_stmt(Stmt* stmt) {
 		break;
 	}
 	print_newline();
+}
+
+void AstPrinter::print_struct_stmt(Stmt* stmt) {
+	print_string("STRUCT ");
+	print_token(stmt->struct_stmt.identifier);
+	print_newline();
+
+	tab_count++;
+	auto fields = stmt->struct_stmt.fields;
+	for (auto it = fields->begin(); it != fields->end(); ++it) {
+		Stmt* s = *it;
+		print_stmt(s);
+	}
+	tab_count--;
 }
 
 void AstPrinter::print_func_decl(Stmt* stmt) {
@@ -93,11 +110,20 @@ void AstPrinter::print_expr(Expr* expr) {
 	case E_BINARY:
 		print_binary(expr);
 		break;
+	case E_FUNC_CALL:
+		print_func_call(expr);
+		break;
 	case E_VARIABLE_REF:
 		print_token(expr->variable_ref.identifier);
 		break;
 	case E_NUMBER:
 		print_token(expr->number);
+		break;
+	case E_STRING:
+		print_string(expr);
+		break;
+	case E_CHAR:
+		print_char(expr);
 		break;
 	}
 }
@@ -114,6 +140,34 @@ void AstPrinter::print_binary(Expr* expr) {
 	print_token(expr->binary.op);
 	print_space();
 	print_expr(expr->binary.right);
+}
+
+void AstPrinter::print_func_call(Expr* expr) {
+	print_token(expr->func_call.callee);
+	print_lparen();
+	if (expr->func_call.args) {
+		auto args = expr->func_call.args;
+		for (u64 i = 0; i < args->size(); ++i) {
+			Expr* arg = args->at(i);
+			print_expr(arg);
+			if (i != args->size()-1) {
+				print_string(", ");
+			}
+		}
+	}
+	print_rparen();
+}
+
+void AstPrinter::print_string(Expr* expr) {
+	print_char('"');
+	print_token(expr->string);
+	print_char('"');
+}
+
+void AstPrinter::print_char(Expr* expr) {
+	print_char('\'');
+	print_token(expr->chr);
+	print_char('\'');
 }
 
 void AstPrinter::print_data_type(DataType* data_type) {

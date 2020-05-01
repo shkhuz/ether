@@ -4,4 +4,5 @@ bin/
 obj/
 res/*.o
 .gdb_history
+gdb_init
 a.out

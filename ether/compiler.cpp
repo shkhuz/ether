@@ -18,6 +18,7 @@ error_code Compiler::compile(const char* in_file, const char* out_file) {
 		ether_abort_no_args();
 	}
 
+#if PRINT_TOKEN
 	for (auto it = lexer_output.tokens->begin();
 		 it != lexer_output.tokens->end(); 
 		 ++it) {
@@ -28,6 +29,7 @@ error_code Compiler::compile(const char* in_file, const char* out_file) {
 				token->line,
 				token->column);
 	}
+#endif
 
 	Parser parser;
 	ParserOutput parser_output = parser.parse(lexer_output.tokens, srcfile);

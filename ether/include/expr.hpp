@@ -1,12 +1,16 @@
 #pragma once
 
 #include <typedef.hpp>
+#include <vector>
 
 enum ExprType {
 	E_ASSIGN,
 	E_BINARY,
+	E_FUNC_CALL,
 	E_VARIABLE_REF,
 	E_NUMBER,
+	E_STRING,
+	E_CHAR,
 };
 
 struct SourceFile;
@@ -24,6 +28,12 @@ struct Expr {
 		} variable_ref;
 
 		struct {
+			Token* callee;
+			std::vector<Expr*>* args;
+			Stmt* function_called;
+		} func_call;
+		
+		struct {
 			Expr* left;
 			Expr* value;
 		} assign;
@@ -35,6 +45,8 @@ struct Expr {
 		} binary;
 		
 		Token* number;
+		Token* string;
+		Token* chr;
 	};
 };
 
