@@ -1,0 +1,5 @@
+main :: {
+	array [100]int;
+	array[0] = 12;
+}
+

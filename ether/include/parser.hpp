@@ -51,13 +51,15 @@ private:
 	Expr* expr_assign();
 	Expr* expr_binary_plus_minus();
 	Expr* expr_cast();
+	Expr* expr_func_call_array_access();
 	Expr* expr_primary();
 	Expr* expr_grouping();
 
 	Expr* assign_create(Expr* left, Expr* value);
 	Expr* binary_create(Expr* left, Expr* right, Token* op);
 	Expr* cast_create(Token* start, DataType* cast_to, Expr* right);
-	Expr* func_call_create(Token* callee, std::vector<Expr*>* args);
+	Expr* func_call_create(Expr* left, std::vector<Expr*>* args);
+	Expr* array_access_create(Expr* left, Expr* index, Token* end);
 	Expr* variable_ref_create(Token* identifier);
 	Expr* number_create(Token* number);
 	Expr* string_create(Token* string);

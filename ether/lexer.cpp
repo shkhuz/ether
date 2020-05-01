@@ -234,9 +234,6 @@ void Lexer::string() {
 }
 
 void Lexer::chr() {
-	u64 quote_line = line;
-	u64 quote_column = compute_column();
-
 	start++;	// don't include the double quotes
 	current++;
 
@@ -248,7 +245,7 @@ void Lexer::chr() {
 	}
 
 	if (*current != '\'') {
-		error_at(quote_line, quote_column, "missing terminating ‘'’;");
+		error("char literals can only hold a single character;");
 		return;
 	}
 

@@ -49,6 +49,47 @@
 		CONTINUE_ERROR;							\
 	}
 
+#define EXPR(name)								\
+	Expr* name = null;							\
+	{											\
+		CURRENT_ERROR;							\
+		name = expr();							\
+		EXIT_ERROR null;						\
+	}
+
+/* custom initialization */
+#define EXPR_CI(name, func)						\
+	Expr* name = null;							\
+	{											\
+		CURRENT_ERROR;							\
+		name = func();							\
+		EXIT_ERROR null;						\
+	}
+
+/* no declaration */
+#define EXPR_ND(name)							\
+	{											\
+		CURRENT_ERROR;							\
+		name = expr();							\
+		EXIT_ERROR null;						\
+	}
+
+#define STMT(name)								\
+	Stmt* name = null;							\
+	{											\
+		CURRENT_ERROR;							\
+		name = stmt();							\
+		EXIT_ERROR null;						\
+	}
+
+#define STMT_CON(name)							\
+	Stmt* name = null;							\
+	{											\
+		CURRENT_ERROR;							\
+		name = stmt();							\
+		CONTINUE_ERROR;							\
+	}
+
 ParserOutput Parser::parse(std::vector<Token*>* _tokens, SourceFile* _srcfile) {
 	tokens = _tokens;
 	srcfile = _srcfile;
@@ -87,21 +128,15 @@ Stmt* Parser::decl() {
 	
 	if (match_identifier()) {
 		Token* identifier = previous();
-		DataType* data_type;
-		{
-			CURRENT_ERROR;
-			data_type = match_data_type();
-			EXIT_ERROR null;
-		}
+		DataType* data_type = match_data_type();
+		
 		DataType* func_data_type = null;
 		Expr* initializer = null;
 		
 		if (data_type) {
 			error_loc = GLOBAL;
 			if (match_double_colon()) {
-				CURRENT_ERROR;
-				initializer = expr();
-				EXIT_ERROR null;
+				EXPR_ND(initializer);
 			}
 			consume_semicolon();
 			return var_decl_create(
@@ -185,9 +220,7 @@ Stmt* Parser::decl() {
 				std::vector<Stmt*>* body = null;
 				bool buffer_allocated = false;
 				while (!match_rbrace()) {
-					CURRENT_ERROR;
-					Stmt* s = stmt();
-					CONTINUE_ERROR;
+					STMT_CON(s);
 					if (s) {
 						if (!buffer_allocated) {
 							body = new std::vector<Stmt*>();
@@ -207,10 +240,9 @@ Stmt* Parser::decl() {
 			else {
 				error_loc = GLOBAL;
 				previous_data_type(func_data_type);
-				CURRENT_ERROR;
-				initializer = expr();
-				EXIT_ERROR null;
+				EXPR_ND(initializer);
 				consume_semicolon();
+				
 				return var_decl_create(
 					identifier,
 					data_type,
@@ -220,12 +252,7 @@ Stmt* Parser::decl() {
 	}
 	else if (match_keyword("struct")) {
 		error_loc = STRUCT_HEADER;
-		Token* identifier = null;
-		{
-			CURRENT_ERROR;
-			identifier = consume_identifier();
-			EXIT_ERROR null;
-		}
+		CONSUME_IDENTIFIER(identifier);
 		consume_lbrace();
 
 		error_loc = STRUCT_BODY;
@@ -273,10 +300,9 @@ Stmt* Parser::stmt() {
 				return expr_stmt();
 			}
 			else {
-				CURRENT_ERROR;
-				initializer = expr();
+				EXPR_ND(initializer);
 				consume_semicolon();
-				EXIT_ERROR null;
+				
 				return var_decl_create(
 					identifier,
 					data_type,
@@ -286,11 +312,10 @@ Stmt* Parser::stmt() {
 		
 		else {
 			if (match_double_colon()) {
-				CURRENT_ERROR;
-				initializer = expr();
-				EXIT_ERROR null;
+				EXPR_ND(initializer);
 			}
 			consume_semicolon();
+			
 			return var_decl_create(
 				identifier,
 				data_type,
@@ -301,7 +326,7 @@ Stmt* Parser::stmt() {
 }
 
 Stmt* Parser::expr_stmt() {
-	Expr* e = expr();
+	EXPR(e);
 	consume_semicolon();
 	return expr_stmt_create(e);
 }
@@ -347,18 +372,12 @@ Expr* Parser::expr() {
 }
 
 Expr* Parser::expr_assign() {
-	Expr* left = null;
-	{
-		CURRENT_ERROR;
-		left = expr_binary_plus_minus();
-		EXIT_ERROR null;
-	}
+	EXPR_CI(left, expr_binary_plus_minus);
 	if (match_by_type(T_EQUAL)) {
-		CURRENT_ERROR;
-		Expr* value = expr_assign();
-		EXIT_ERROR null;
+		EXPR_CI(value, expr_assign);
 
-		if (left->type == E_VARIABLE_REF) {
+		if (left->type == E_VARIABLE_REF ||
+			left->type == E_ARRAY_ACCESS) {
 			return assign_create(left, value);
 		}
 		error_expr(left, "invalid assignment target;");
@@ -368,19 +387,12 @@ Expr* Parser::expr_assign() {
 }
 
 Expr* Parser::expr_binary_plus_minus() {
-	Expr* left = null;
-	{
-		CURRENT_ERROR;
-		left = expr_cast();
-		EXIT_ERROR null;
-	}
+	EXPR_CI(left, expr_cast);
 	while (match_by_type(T_PLUS) ||
 		   match_by_type(T_MINUS)) {
 		Token* op = previous();
 		
-		CURRENT_ERROR;
-		Expr* right = expr_binary_plus_minus();
-		EXIT_ERROR null;
+		EXPR_CI(right, expr_binary_plus_minus);
 		
 		left = binary_create(left, right, op);
 		CHECK_EOF(null);
@@ -395,43 +407,50 @@ Expr* Parser::expr_cast() {
 		CONSUME_DATA_TYPE(cast_to);
 		consume_rangbkt();
 
-		CURRENT_ERROR;
-		Expr* right = expr_grouping();
-		EXIT_ERROR null;
+		EXPR_CI(right, expr_grouping);
 		
 		return cast_create(start, cast_to, right);
 	}
-	return expr_primary();
+	return expr_func_call_array_access();
+}
+
+Expr* Parser::expr_func_call_array_access() {
+	EXPR_CI(left, expr_primary);
+	if (match_lparen()) {
+		if (left->type != E_VARIABLE_REF) {
+			error_expr(left, "invalid operand to call expression; ");
+			return null;
+		}
+		std::vector<Expr*>* args = null;
+		bool args_buffer_initialized = false;
+		if (!match_rparen()) {
+			do {
+				if (!args_buffer_initialized) {
+					args = new std::vector<Expr*>();
+					args_buffer_initialized = true;
+				}
+
+				EXPR_CI(arg, expr);	
+				args->push_back(arg);
+				CHECK_EOF(null);
+			} while (match_by_type(T_COMMA));
+			consume_rparen();
+		}
+		return func_call_create(left, args);
+	}
+	
+	else if (match_lbracket()) {
+		EXPR_CI(array_subscript, expr);
+		consume_rbracket();
+
+		return array_access_create(left, array_subscript, previous());
+	}
+	return left;
 }
 
 Expr* Parser::expr_primary() {
 	if (match_identifier()) {
-		Token* identifier = previous();
-		if (match_lparen()) {
-			std::vector<Expr*>* args = null;
-			bool args_buffer_initialized = false;
-			if (!match_rparen()) {
-				do {
-					if (!args_buffer_initialized) {
-						args = new std::vector<Expr*>();
-						args_buffer_initialized = true;
-					}
-
-					CURRENT_ERROR;
-					Expr* arg = expr();
-					EXIT_ERROR null;
-					
-					args->push_back(arg);
-					CHECK_EOF(null);
-				} while (match_by_type(T_COMMA));
-				consume_rparen();
-			}
-			return func_call_create(identifier,
-									args);
-		}
-		else {
-			return variable_ref_create(identifier);
-		}
+		return variable_ref_create(previous());
 	}	
 	else if (match_by_type(T_INTEGER) ||
 			 match_by_type(T_FLOAT32) ||
@@ -455,9 +474,7 @@ Expr* Parser::expr_primary() {
 
 Expr* Parser::expr_grouping() {
 	consume_lparen();
-	CURRENT_ERROR;
-	Expr* e = expr();
-	EXIT_ERROR null;
+	EXPR_CI(e, expr);
 	CHECK_EOF(null);
 	consume_rparen();
 	return e;
@@ -496,18 +513,28 @@ Expr* Parser::cast_create(Token* start, DataType* cast_to, Expr* right) {
 	return expr;
 }
 
-Expr* Parser::func_call_create(Token* callee, std::vector<Expr*>* args) {
+Expr* Parser::func_call_create(Expr* left, std::vector<Expr*>* args) {
 	EXPR_CREATE(expr);
 	expr->type = E_FUNC_CALL;
-	expr->head = callee;
+	expr->head = left->head;
 	if (args == null) {
-		expr->tail = callee;
+		expr->tail = left->tail;
 	}
 	else {
 		expr->tail = args->at(args->size()-1)->tail;
 	}
-	expr->func_call.callee = callee;
+	expr->func_call.left = left;
 	expr->func_call.args = args;
+	return expr;
+}
+
+Expr* Parser::array_access_create(Expr* left, Expr* index, Token* end) {
+	EXPR_CREATE(expr);
+	expr->type = E_ARRAY_ACCESS;
+	expr->head = left->head;
+	expr->tail = end;
+	expr->array_access.left = left;
+	expr->array_access.index = index;
 	return expr;
 }
 
@@ -647,6 +674,8 @@ bool Parser::match_semicolon() {
 
 DataType* Parser::match_data_type() {
 	bool is_array = false;
+	bool array_matched = false;
+	bool pointer_matched = false;
 	Token* array_elem_count = null;
 
 	if (match_lbracket()) {
@@ -661,20 +690,26 @@ DataType* Parser::match_data_type() {
 				return null;
 			}
 		}
+		array_matched = true;
 		array_elem_count = previous();
 		consume_rbracket();
 	}
 	
 	u8 pointer_count = 0;
-	bool pre_type_matched = false;
 	while (match_by_type(T_CARET)) {
-		pre_type_matched = true;
+		pointer_matched = true;
 		pointer_count++;
 	}
 
 	Token* identifier = null;
 	if (!match_identifier()) {
-		if (pre_type_matched) {
+		if (array_matched) {
+			for (u8 i = 0; i < 3; ++i) {
+				goto_previous_token();
+			}
+			return null;
+		}
+		else if (pointer_matched) {
 			error("expect type name;");
 			return null;
 		}

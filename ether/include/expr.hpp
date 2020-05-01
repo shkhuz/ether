@@ -8,6 +8,7 @@ enum ExprType {
 	E_BINARY,
 	E_CAST,
 	E_FUNC_CALL,
+	E_ARRAY_ACCESS,
 	E_VARIABLE_REF,
 	E_NUMBER,
 	E_STRING,
@@ -30,10 +31,15 @@ struct Expr {
 		} variable_ref;
 
 		struct {
-			Token* callee;
+			Expr* left;
 			std::vector<Expr*>* args;
 			Stmt* function_called;
 		} func_call;
+
+		struct {
+			Expr* left;
+			Expr* index;
+		} array_access;
 		
 		struct {
 			Expr* left;

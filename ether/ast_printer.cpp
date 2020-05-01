@@ -116,6 +116,9 @@ void AstPrinter::print_expr(Expr* expr) {
 	case E_FUNC_CALL:
 		print_func_call(expr);
 		break;
+	case E_ARRAY_ACCESS:
+		print_array_access(expr);
+		break;
 	case E_VARIABLE_REF:
 		print_token(expr->variable_ref.identifier);
 		break;
@@ -154,7 +157,7 @@ void AstPrinter::print_cast(Expr* expr) {
 }
 
 void AstPrinter::print_func_call(Expr* expr) {
-	print_token(expr->func_call.callee);
+	print_expr(expr->func_call.left);
 	print_lparen();
 	if (expr->func_call.args) {
 		auto args = expr->func_call.args;
@@ -167,6 +170,13 @@ void AstPrinter::print_func_call(Expr* expr) {
 		}
 	}
 	print_rparen();
+}
+
+void AstPrinter::print_array_access(Expr* expr) {
+	print_expr(expr->array_access.left);
+	print_char('[');
+	print_expr(expr->array_access.index);
+	print_char(']');
 }
 
 void AstPrinter::print_string(Expr* expr) {
