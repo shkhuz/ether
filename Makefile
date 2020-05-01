@@ -20,7 +20,7 @@ CFLAGS := -I$(INC_DIR) -D_DEBUG -Wall -Wextra -Wshadow -Wno-write-strings -m64 -
 LDFLAGS :=
 
 run: $(BIN_FILE)
-	$(BIN_FILE) -o hello res/hello.eth
+	$(BIN_FILE) -o hello res/all_tests.eth
 	gcc -o $(BIN_DIR)/a.out res/hello.o -Wl,--dynamic-linker=/usr/lib64/ld-linux-x86-64.so.2 
 
 debug: $(BIN_FILE)

@@ -6,6 +6,7 @@
 enum ExprType {
 	E_ASSIGN,
 	E_BINARY,
+	E_CAST,
 	E_FUNC_CALL,
 	E_VARIABLE_REF,
 	E_NUMBER,
@@ -15,6 +16,7 @@ enum ExprType {
 
 struct SourceFile;
 struct Stmt;
+struct DataType;
 struct Token;
 
 struct Expr {
@@ -43,6 +45,11 @@ struct Expr {
 			Expr* right;
 			Token* op;
 		} binary;
+
+		struct {
+			DataType* cast_to;
+			Expr* right;
+		} cast;
 		
 		Token* number;
 		Token* string;

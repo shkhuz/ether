@@ -156,6 +156,7 @@ Stmt* Parser::decl() {
 											  p_identifier,
 											  p_data_type,
 											  null));
+						CHECK_EOF(null);
 					} while (match_by_type(T_COMMA));
 					consume_rparen();
 				}
@@ -239,12 +240,11 @@ Stmt* Parser::decl() {
 			CONSUME_IDENTIFIER_CON(f_identifier);
 			CONSUME_DATA_TYPE_CON(f_data_type);
 			consume_semicolon();
-			
-
 			fields->push_back(var_decl_create(
 								  f_identifier,
 								  f_data_type,
 								  null));
+			CHECK_EOF(null);
 		}
 		return struct_create(identifier,
 							 fields);
@@ -347,9 +347,16 @@ Expr* Parser::expr() {
 }
 
 Expr* Parser::expr_assign() {
-	Expr* left = expr_binary_plus_minus();
+	Expr* left = null;
+	{
+		CURRENT_ERROR;
+		left = expr_binary_plus_minus();
+		EXIT_ERROR null;
+	}
 	if (match_by_type(T_EQUAL)) {
+		CURRENT_ERROR;
 		Expr* value = expr_assign();
+		EXIT_ERROR null;
 
 		if (left->type == E_VARIABLE_REF) {
 			return assign_create(left, value);
@@ -361,15 +368,40 @@ Expr* Parser::expr_assign() {
 }
 
 Expr* Parser::expr_binary_plus_minus() {
-	Expr* left = expr_primary();
+	Expr* left = null;
+	{
+		CURRENT_ERROR;
+		left = expr_cast();
+		EXIT_ERROR null;
+	}
 	while (match_by_type(T_PLUS) ||
 		   match_by_type(T_MINUS)) {
 		Token* op = previous();
+		
+		CURRENT_ERROR;
 		Expr* right = expr_binary_plus_minus();
-
+		EXIT_ERROR null;
+		
 		left = binary_create(left, right, op);
+		CHECK_EOF(null);
 	}
 	return left;
+}
+
+Expr* Parser::expr_cast() {
+	if (match_langbkt()) {
+		Token* start = previous();
+		
+		CONSUME_DATA_TYPE(cast_to);
+		consume_rangbkt();
+
+		CURRENT_ERROR;
+		Expr* right = expr_grouping();
+		EXIT_ERROR null;
+		
+		return cast_create(start, cast_to, right);
+	}
+	return expr_primary();
 }
 
 Expr* Parser::expr_primary() {
@@ -388,8 +420,9 @@ Expr* Parser::expr_primary() {
 					CURRENT_ERROR;
 					Expr* arg = expr();
 					EXIT_ERROR null;
-
+					
 					args->push_back(arg);
+					CHECK_EOF(null);
 				} while (match_by_type(T_COMMA));
 				consume_rparen();
 			}
@@ -411,18 +444,23 @@ Expr* Parser::expr_primary() {
 	else if (match_by_type(T_CHAR)) {
 		return char_create(previous());
 	}
-	else if (match_lparen()) {
-		CURRENT_ERROR;
-		Expr* e = expr();
-		EXIT_ERROR null;
-		CHECK_EOF(null);
-		consume_rparen();
-		return e;
+	else if (current()->type == T_LPAREN) {
+		return expr_grouping();
 	}
 	else {
 		error("unknown expression;");
 	}
 	return null;
+}
+
+Expr* Parser::expr_grouping() {
+	consume_lparen();
+	CURRENT_ERROR;
+	Expr* e = expr();
+	EXIT_ERROR null;
+	CHECK_EOF(null);
+	consume_rparen();
+	return e;
 }
 
 #define EXPR_CREATE(name) Expr* name = new Expr();
@@ -445,6 +483,16 @@ Expr* Parser::binary_create(Expr* left, Expr* right, Token* op) {
 	expr->binary.left = left;
 	expr->binary.right = right;
 	expr->binary.op = op;
+	return expr;
+}
+
+Expr* Parser::cast_create(Token* start, DataType* cast_to, Expr* right) {
+	EXPR_CREATE(expr);
+	expr->type = E_CAST;
+	expr->head = start;
+	expr->tail = right->tail;
+	expr->cast.cast_to = cast_to;
+	expr->cast.right = right;
 	return expr;
 }
 
@@ -576,6 +624,20 @@ bool Parser::match_rbracket() {
 	return false;
 }
 
+bool Parser::match_langbkt() {
+	if (match_by_type(T_LANGBKT)) {
+		return true;
+	}
+	return false;
+}
+
+bool Parser::match_rangbkt() {
+	if (match_by_type(T_RANGBKT)) {
+		return true;
+	}
+	return false;
+}
+
 bool Parser::match_semicolon() {
 	if (match_by_type(T_SEMICOLON)) {
 		return true;
@@ -685,6 +747,14 @@ void Parser::consume_lbracket() {
 
 void Parser::consume_rbracket() {
 	expect_by_type(T_RBRACKET, "expect ‘]’;"); 
+}
+
+void Parser::consume_langbkt() {
+	expect_by_type(T_LANGBKT, "expect ‘<’;"); 
+}
+
+void Parser::consume_rangbkt() {
+	expect_by_type(T_RANGBKT, "expect ‘>’;"); 
 }
 
 void Parser::consume_semicolon() {

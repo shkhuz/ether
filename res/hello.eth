@@ -1,9 +1,12 @@
 main :: {
+	123 + ;
 	init();
 	123;
 	get_error( ;
 	hello();
 	123;
+	();
+	get_err(;
 }
 
 init :: {
@@ -13,6 +16,7 @@ init :: {
 
 	error :: init();
 	error :: init();
+	error = cast<^char> puts("Hello");
 }
 
 struct new {

@@ -50,10 +50,13 @@ private:
 	Expr* expr();
 	Expr* expr_assign();
 	Expr* expr_binary_plus_minus();
+	Expr* expr_cast();
 	Expr* expr_primary();
+	Expr* expr_grouping();
 
 	Expr* assign_create(Expr* left, Expr* value);
 	Expr* binary_create(Expr* left, Expr* right, Token* op);
+	Expr* cast_create(Token* start, DataType* cast_to, Expr* right);
 	Expr* func_call_create(Token* callee, std::vector<Expr*>* args);
 	Expr* variable_ref_create(Token* identifier);
 	Expr* number_create(Token* number);
@@ -70,6 +73,8 @@ private:
 	bool match_rbrace();
 	bool match_lbracket();
 	bool match_rbracket();
+	bool match_langbkt();
+	bool match_rangbkt();
 	bool match_semicolon();
 	DataType* match_data_type();
 	void previous_data_type(DataType* data_type);
@@ -83,6 +88,8 @@ private:
 	void consume_rbrace();
 	void consume_lbracket();
 	void consume_rbracket();
+	void consume_langbkt();
+	void consume_rangbkt();
 	void consume_semicolon();
 
 	void expect_by_type(TokenType type, const char* fmt, ...);

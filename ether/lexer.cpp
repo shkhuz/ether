@@ -30,7 +30,7 @@ LexerOutput Lexer::lex(SourceFile* _srcfile) {
 				add(T_LESS_EQUAL);
 			}
 			else {
-				add(T_LESS);
+				add(T_LANGBKT);
 			}
 		} break;
 
@@ -47,7 +47,7 @@ LexerOutput Lexer::lex(SourceFile* _srcfile) {
 				add(T_GREATER_EQUAL);
 			}
 			else {
-				add(T_GREATER);
+				add(T_RANGBKT);
 			}
 		} break;
 
@@ -83,7 +83,6 @@ LexerOutput Lexer::lex(SourceFile* _srcfile) {
 		case '%': 	match('=') ? add(T_PERCENT_EQUAL) :  add(T_PERCENT); break;
 		case '!':	match('=') ? add(T_BANG_EQUAL) :	 add(T_BANG); break;
 		case '=':	match('=') ? add(T_EQUAL_EQUAL) :	 add(T_EQUAL); break;
-		case '~':	match('=') ? add(T_TILDE_EQUAL) :	 add(T_TILDE); break;
 		case '.':	match('.') ? add(T_DOT_DOT) :		 add(T_DOT); break;
 
 		case '(':	add(T_LPAREN); break;
@@ -91,10 +90,11 @@ LexerOutput Lexer::lex(SourceFile* _srcfile) {
 		case '{':	add(T_LBRACE); break;
 		case '}':	add(T_RBRACE); break;
 		case '[':	add(T_LBRACKET); break;
-		case ']':	add(T_RBRACKET); break;	
+		case ']':	add(T_RBRACKET); break;
 		case ';':	add(T_SEMICOLON); break;
 		case ',':	add(T_COMMA); break;
 		case '^':	add(T_CARET); break;
+		case '~':	add(T_TILDE); break;
 
 		case 'A': case 'B': case 'C': case 'D':
 		case 'E': case 'F': case 'G': case 'H':

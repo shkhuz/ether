@@ -21,6 +21,7 @@ private:
 	void print_expr(Expr* expr);
 	void print_assign(Expr* expr);
 	void print_binary(Expr* expr);
+	void print_cast(Expr* expr);
 	void print_func_call(Expr* expr);
 	void print_string(Expr* expr);
 	void print_char(Expr* expr);

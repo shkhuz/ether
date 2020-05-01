@@ -110,6 +110,9 @@ void AstPrinter::print_expr(Expr* expr) {
 	case E_BINARY:
 		print_binary(expr);
 		break;
+	case E_CAST:
+		print_cast(expr);
+		break;
 	case E_FUNC_CALL:
 		print_func_call(expr);
 		break;
@@ -140,6 +143,14 @@ void AstPrinter::print_binary(Expr* expr) {
 	print_token(expr->binary.op);
 	print_space();
 	print_expr(expr->binary.right);
+}
+
+void AstPrinter::print_cast(Expr* expr) {
+	print_string("cast<");
+	print_data_type(expr->cast.cast_to);
+	print_string(">(");
+	print_expr(expr->cast.right);
+	print_rparen();
 }
 
 void AstPrinter::print_func_call(Expr* expr) {
