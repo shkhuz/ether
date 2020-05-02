@@ -33,3 +33,26 @@ add :: (a int, b ) 123 {
 
 error :: ;
 init;
+
+if {
+	
+}
+
+elif {
+
+}
+
+rerew :: {
+	if 3 {
+		
+	}
+	elif {
+		dsd;
+	}
+	elif 12 {
+		puts(ff ssdjs;
+	}
+	else fd {
+
+	}
+}

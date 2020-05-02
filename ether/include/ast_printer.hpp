@@ -13,9 +13,12 @@ struct AstPrinter {
 
 private:
 	void print_stmt(Stmt* stmt);
+	void pre_stmt();
 	void print_struct_stmt(Stmt* stmt);
 	void print_func_decl(Stmt* stmt);
 	void print_var_decl(Stmt* stmt);
+	void print_if_stmt(Stmt* stmt);
+	void print_if_branch(IfBranch* branch, IfBranchType type);
 	void print_expr_stmt(Stmt* stmt);
 
 	void print_expr(Expr* expr);
@@ -37,4 +40,5 @@ private:
 	void print_newline();
 	void print_char(char c);
 	void print_tabs_by_indentation();
+	void print_tree_node_literal();
 };

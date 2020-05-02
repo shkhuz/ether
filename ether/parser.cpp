@@ -63,6 +63,13 @@
 		CONTINUE_ERROR;							\
 	}
 
+#define CONSUME_LBRACE							\
+	{											\
+		CURRENT_ERROR;							\
+		consume_lbrace();						\
+		EXIT_ERROR null;						\
+	}
+
 #define EXPR(name)								\
 	Expr* name = null;							\
 	{											\
@@ -103,6 +110,13 @@
 		name = stmt();							\
 		CONTINUE_ERROR;							\
 	}
+
+#define RECOVER									\
+	while (error_panic) {						\
+		sync_to_next_statement();				\
+	} 
+
+#define STMT_CREATE(name) Stmt* name = new Stmt; 
 
 ParserOutput Parser::parse(Token** _tokens, SourceFile* _srcfile) {
 	tokens = _tokens;
@@ -280,7 +294,26 @@ Stmt* Parser::decl() {
 		}
 		return struct_create(identifier,
 							 fields);
-	}	
+	}
+	
+	else if (match_keyword("if") ||
+			 match_keyword("elif") ||
+			 match_keyword("else")) {
+		error_loc = IF_HEADER;
+		goto_previous_token();
+		if (str_intern(current()->lexeme) ==
+			str_intern("if")) {
+			error("if statement requires function scope; ");
+			RECOVER;
+			return null;
+		}
+		else {
+			error("%s requires preceding if statement and function scope;", current()->lexeme);
+			RECOVER;
+			return null;
+		}
+	}
+	
 	else {
 		error("expect top-level decl statement;");
 	}
@@ -327,7 +360,77 @@ Stmt* Parser::stmt() {
 				initializer);
 		}
 	}
+	
+	else if (match_keyword("if")) {
+		STMT_CREATE(stmt);
+		stmt->type = S_IF;
+
+		if (!if_branch(stmt, IF_IF_BRANCH)) {
+			RECOVER;
+		}
+
+		while (match_keyword("elif")) {
+			if_branch(stmt, IF_ELIF_BRANCH);
+			CHECK_EOF(null);			
+			RECOVER;
+		}
+
+		if (match_keyword("else")) {
+			CURRENT_ERROR;
+			if_branch(stmt, IF_ELSE_BRANCH);
+			EXIT_ERROR null;
+		}
+
+		return stmt;
+	}
+	
+	else if (match_keyword("elif") ||
+			 match_keyword("else")) {
+		error_loc = IF_HEADER;
+		goto_previous_token();
+		error("%s without preceding if statement;", current()->lexeme);
+		RECOVER;
+		return null;
+	}
+	
 	return expr_stmt();
+}
+
+Stmt* Parser::if_branch(Stmt* if_stmt, IfBranchType type) {
+	Expr* cond = null;
+	error_loc = IF_HEADER;
+	if (type != IF_ELSE_BRANCH) {
+		EXPR_ND(cond);
+	}
+
+	CONSUME_LBRACE;
+	Stmt** body = null;
+	error_loc = IF_BODY;
+	while (!match_rbrace()) {
+		STMT_CON(s);
+		if (s) {
+			buf_push(body, s);
+		}
+		CHECK_EOF(null);		
+	}
+
+	IfBranch* branch = new IfBranch();
+	branch->cond = cond;
+	branch->body = body;
+	
+	switch (type) {
+	case IF_IF_BRANCH:
+		if_stmt->if_stmt.if_branch = branch;
+		break;
+	case IF_ELIF_BRANCH:
+		buf_push(if_stmt->if_stmt.elif_branch, branch);
+		break;
+	case IF_ELSE_BRANCH:
+		if_stmt->if_stmt.else_branch = branch;
+		break;
+	}
+
+	return if_stmt;
 }
 
 Stmt* Parser::expr_stmt() {
@@ -335,8 +438,6 @@ Stmt* Parser::expr_stmt() {
 	CONSUME_SEMICOLON;
 	return expr_stmt_create(e);
 }
-
-#define STMT_CREATE(name) Stmt* name = new Stmt; 
 
 Stmt* Parser::struct_create(Token* identifier, Stmt** fields) {
 	STMT_CREATE(stmt);
@@ -587,14 +688,11 @@ bool Parser::match_identifier() {
 }
 
 bool Parser::match_keyword(char* keyword) {
-	if (current()->type == T_KEYWORD) {
-		for (u64 i = 0; i < KEYWORDS_LEN; ++i) {
-			if (str_intern(keyword) ==
-				str_intern(keywords[i])) {
-				goto_next_token();
-				return true;
-			}
-		}
+	if (current()->type == T_KEYWORD &&
+		(str_intern(current()->lexeme) ==
+		 str_intern(keyword))) {
+		goto_next_token();
+		return true;
 	}
 	return false;
 }
@@ -892,8 +990,9 @@ void Parser::error_expr(Expr* expr, const char* fmt, ...) {
 void Parser::sync_to_next_statement() {
 	switch (error_loc) {
 	case GLOBAL:
-	case FUNCTION_BODY:
 	case STRUCT_BODY:
+	case FUNCTION_BODY:
+	case IF_BODY:
 		if (match_semicolon()) {
 			error_panic = false;
 			error_brace_count = 0;
@@ -904,6 +1003,7 @@ void Parser::sync_to_next_statement() {
 		
 	case STRUCT_HEADER:
 	case FUNCTION_HEADER:
+	case IF_HEADER:
 		if (current()->type == T_LBRACE) {
 			if (!error_lbrace_parsed) {
 				error_lbrace_parsed = true;

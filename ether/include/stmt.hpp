@@ -14,6 +14,7 @@ enum StmtType {
 };
 
 struct Expr;
+struct IfBranch;
 
 struct Stmt {
 	StmtType type;
@@ -35,7 +36,24 @@ struct Stmt {
 			DataType* data_type;
 			Expr* initializer;
 		} var_decl;
-		
+
+		struct {
+			IfBranch* if_branch;
+			IfBranch** elif_branch;
+			IfBranch* else_branch;
+		} if_stmt;
+
 		Expr* expr_stmt;
 	};
+};
+
+struct IfBranch {
+	Expr* cond;
+	Stmt** body;
+};
+
+enum IfBranchType {
+	IF_IF_BRANCH,
+	IF_ELIF_BRANCH,
+	IF_ELSE_BRANCH,
 };

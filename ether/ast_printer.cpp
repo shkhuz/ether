@@ -12,8 +12,7 @@ void AstPrinter::print(Stmt** _stmts) {
 }
 
 void AstPrinter::print_stmt(Stmt* stmt) {
-	print_tabs_by_indentation();
-	print_string("└─ ");
+	pre_stmt();
 	switch (stmt->type) {
 	case S_STRUCT:
 		print_struct_stmt(stmt);
@@ -24,11 +23,19 @@ void AstPrinter::print_stmt(Stmt* stmt) {
 	case S_VAR_DECL:
 		print_var_decl(stmt);
 		break;
+	case S_IF:
+		print_if_stmt(stmt);
+		break;
 	case S_EXPR_STMT:
 		print_expr_stmt(stmt);
 		break;
 	}
 	print_newline();
+}
+
+void AstPrinter::pre_stmt() {
+	print_tabs_by_indentation();
+	print_tree_node_literal();
 }
 
 void AstPrinter::print_struct_stmt(Stmt* stmt) {
@@ -91,6 +98,53 @@ void AstPrinter::print_var_decl(Stmt* stmt) {
 		print_string(" = ");
 		print_expr(stmt->var_decl.initializer);
 	}
+}
+
+void AstPrinter::print_if_stmt(Stmt* stmt) {
+	print_if_branch(stmt->if_stmt.if_branch, IF_IF_BRANCH);
+
+	buf_loop(stmt->if_stmt.elif_branch, b) {
+		print_if_branch(stmt->if_stmt.elif_branch[b], IF_ELIF_BRANCH);
+	}
+
+	if (stmt->if_stmt.else_branch) {
+		print_if_branch(stmt->if_stmt.else_branch, IF_ELSE_BRANCH);
+	}
+}
+
+void AstPrinter::print_if_branch(IfBranch* branch, IfBranchType type) {
+	if (type != IF_IF_BRANCH) {
+		pre_stmt();
+	}
+
+	char* if_type_literal;
+	switch (type) {
+	case IF_IF_BRANCH:
+		if_type_literal = "IF";
+		break;
+	case IF_ELIF_BRANCH:
+		if_type_literal = "ELIF";
+		break;
+	case IF_ELSE_BRANCH:
+		if_type_literal = "ELSE";
+		break;
+	}
+	print_string(if_type_literal);
+	print_space();
+
+	if (type != IF_ELSE_BRANCH) {
+		print_expr(branch->cond);
+	}
+	print_newline();
+
+	tab_count++;
+	Stmt** body = branch->body;
+	if (body) {
+		buf_loop(body, s) {
+			print_stmt(body[s]);
+		}
+	}
+	tab_count--;
 }
 
 void AstPrinter::print_expr_stmt(Stmt* stmt) {
@@ -231,4 +285,8 @@ void AstPrinter::print_tabs_by_indentation() {
 	for (u64 i = 0; i < tab_count; ++i) {
 		printf("   ");
 	}
+}
+
+void AstPrinter::print_tree_node_literal() {
+	print_string("└─ ");
 }

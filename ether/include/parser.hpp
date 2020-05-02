@@ -16,6 +16,8 @@ enum ParserErrorLocation {
 	STRUCT_BODY,
 	FUNCTION_HEADER,
 	FUNCTION_BODY,
+	IF_HEADER,
+	IF_BODY,
 	GLOBAL,
 };
 
@@ -40,6 +42,7 @@ private:
 	Stmt* decl();
 
 	Stmt* stmt();
+	Stmt* if_branch(Stmt* if_stmt, IfBranchType type);
 	Stmt* expr_stmt();
 
 	Stmt* struct_create(Token* identifier, Stmt** fields);

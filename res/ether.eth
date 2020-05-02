@@ -1,4 +1,33 @@
 main :: {
 	array [100]int;
 	array[0] = 12;
+
+	if array {
+		qw[1] = "Hello";
+		1 + 2;
+	}
+	elif 1 + 2 {
+		puts("heello");
+		1 + 3 - 3;
+		if match {
+			err :: 123;
+			if err + 2 {
+				puts("");
+			}
+			elif err + 3 {
+			}
+			elif 32423432 {
+				do_something();
+				if done {
+					puts("good");
+				}
+			}
+			else {
+				1 + 's';
+				4 - 2;
+			}
+		}
+		else {
+		}
+	}
 }
