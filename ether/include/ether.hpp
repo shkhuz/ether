@@ -18,6 +18,7 @@
 #include <ds.hpp>
 #include <io.hpp>
 #include <error.hpp>
+#include <str_intern.hpp>
 
 #define true 1
 #define false 0
