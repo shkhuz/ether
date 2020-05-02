@@ -3,6 +3,7 @@
 #include <assert.h>
 #include <limits.h>
 #include <math.h>
+#include <errno.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdint.h>
@@ -11,8 +12,6 @@
 #include <string.h>
 #include <ctype.h>
 #include <unistd.h>
-#include <vector>
-#include <map>
 
 #include <typedef.hpp>
 #include <ds.hpp>
