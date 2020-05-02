@@ -4,14 +4,14 @@
 #include <token.hpp>
 
 struct LexerOutput {
-	std::vector<Token*>* tokens;
+	Token** tokens;
 	error_code error_occured;
 }; 
 
 struct Lexer {
 	SourceFile* srcfile;
 	
-	std::vector<Token*>* tokens;
+	Token** tokens;
 	u64 error_count;
 
 	char* start;

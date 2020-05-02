@@ -1,13 +1,12 @@
 #include <ast_printer.hpp>
 
-void AstPrinter::print(std::vector<Stmt*>* _stmts) {
+void AstPrinter::print(Stmt** _stmts) {
 	stmts = _stmts;
 	tab_count = 0;
 
 	print_string("\n[─────────────────────────]\n");
-	for (auto it = stmts->begin(); it != stmts->end(); ++it) {
-		Stmt* stmt = *it;
-		print_stmt(stmt);
+	buf_loop(_stmts, s) {
+		print_stmt(_stmts[s]);
 	}
 	print_string("[──────────────────────────]\n");
 }
@@ -38,10 +37,8 @@ void AstPrinter::print_struct_stmt(Stmt* stmt) {
 	print_newline();
 
 	tab_count++;
-	auto fields = stmt->struct_stmt.fields;
-	for (auto it = fields->begin(); it != fields->end(); ++it) {
-		Stmt* s = *it;
-		print_stmt(s);
+	buf_loop(stmt->struct_stmt.fields, f) {
+		print_stmt(stmt->struct_stmt.fields[f]);
 	}
 	tab_count--;
 }
@@ -53,13 +50,13 @@ void AstPrinter::print_func_decl(Stmt* stmt) {
 
 	if (stmt->func_decl.params) {
 		print_lparen();
-		auto params = stmt->func_decl.params;
-		for (u64 i = 0; i < params->size(); ++i) {
-			Stmt* param = (*params)[i];
+		Stmt** params = stmt->func_decl.params;
+		buf_loop(params, p) {
+			Stmt* param = params[p];
 			print_token(param->var_decl.identifier);
 			print_space();
 			print_data_type(param->var_decl.data_type);
-			if (i != params->size()-1) {
+			if (p != buf_len(params)-1) {
 				print_string(", ");
 			}
 		}
@@ -74,11 +71,10 @@ void AstPrinter::print_func_decl(Stmt* stmt) {
 	print_newline();
 
 	tab_count++;
-	auto body = stmt->func_decl.body;
+	Stmt** body = stmt->func_decl.body;
 	if (body) {
-		for (auto it = body->begin(); it != body->end(); ++it) {
-			Stmt* s = *it;
-			print_stmt(s);
+		buf_loop(body, s) {
+			print_stmt(body[s]);
 		}
 	}
 	tab_count--;

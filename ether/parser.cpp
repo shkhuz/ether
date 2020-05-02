@@ -49,6 +49,20 @@
 		CONTINUE_ERROR;							\
 	}
 
+#define CONSUME_SEMICOLON						\
+	{											\
+		CURRENT_ERROR;							\
+		consume_semicolon();					\
+		EXIT_ERROR null;						\
+	}
+
+#define CONSUME_SEMICOLON_CON					\
+	{											\
+		CURRENT_ERROR;							\
+		consume_semicolon();					\
+		CONTINUE_ERROR;							\
+	}
+
 #define EXPR(name)								\
 	Expr* name = null;							\
 	{											\
@@ -90,14 +104,14 @@
 		CONTINUE_ERROR;							\
 	}
 
-ParserOutput Parser::parse(std::vector<Token*>* _tokens, SourceFile* _srcfile) {
+ParserOutput Parser::parse(Token** _tokens, SourceFile* _srcfile) {
 	tokens = _tokens;
 	srcfile = _srcfile;
 	
-	stmts = new std::vector<Stmt*>();
+	stmts = null;
 		
 	token_idx = 0;
-	tokens_len = tokens->size();
+	tokens_len = buf_len(_tokens);
 	
 	error_count = 0;
 	error_panic = false;
@@ -108,7 +122,7 @@ ParserOutput Parser::parse(std::vector<Token*>* _tokens, SourceFile* _srcfile) {
 	while (current()->type != T_EOF) {
 		Stmt* stmt = decl();
 		if (stmt) {
-			stmts->push_back(stmt);
+			buf_push(stmts, stmt);
 		}
 	}
 
@@ -138,7 +152,7 @@ Stmt* Parser::decl() {
 			if (match_double_colon()) {
 				EXPR_ND(initializer);
 			}
-			consume_semicolon();
+			CONSUME_SEMICOLON;
 			return var_decl_create(
 				identifier,
 				data_type,
@@ -146,8 +160,11 @@ Stmt* Parser::decl() {
 		}
 		
 		else {
-			consume_double_colon();
-
+			if (!match_double_colon()) {
+				error("expect ‘::’ or data type;");
+				return null;
+			}
+			
 			bool has_params = false;
 			bool empty_params = false;
 			DataType* param_data_type_for_lookback = null;
@@ -178,19 +195,18 @@ Stmt* Parser::decl() {
 				EXIT_ERROR null;
 			}
 			
-			std::vector<Stmt*>* params = null;
+			Stmt** params = null;
 			error_loc = FUNCTION_HEADER;
 			if (has_params) {
 				if (!empty_params) {
-					params = new std::vector<Stmt*>();
 					consume_lparen();
 					do {
 						CONSUME_IDENTIFIER(p_identifier);
 						CONSUME_DATA_TYPE(p_data_type);
-						params->push_back(var_decl_create(
-											  p_identifier,
-											  p_data_type,
-											  null));
+						buf_push(params, var_decl_create(
+									 p_identifier,
+									 p_data_type,
+									 null));
 						CHECK_EOF(null);
 					} while (match_by_type(T_COMMA));
 					consume_rparen();
@@ -217,16 +233,11 @@ Stmt* Parser::decl() {
 				/* function */
 			got_lbrace:
 				error_loc = FUNCTION_BODY;
-				std::vector<Stmt*>* body = null;
-				bool buffer_allocated = false;
+				Stmt** body = null;
 				while (!match_rbrace()) {
 					STMT_CON(s);
 					if (s) {
-						if (!buffer_allocated) {
-							body = new std::vector<Stmt*>();
-							buffer_allocated = true;
-						}
-						body->push_back(s);
+						buf_push(body, s);
 					}
 					CHECK_EOF(null);
 				}
@@ -241,7 +252,7 @@ Stmt* Parser::decl() {
 				error_loc = GLOBAL;
 				previous_data_type(func_data_type);
 				EXPR_ND(initializer);
-				consume_semicolon();
+				CONSUME_SEMICOLON;
 				
 				return var_decl_create(
 					identifier,
@@ -256,21 +267,15 @@ Stmt* Parser::decl() {
 		consume_lbrace();
 
 		error_loc = STRUCT_BODY;
-		std::vector<Stmt*>* fields = null;
-		bool field_buffer_initialized = false;
+		Stmt** fields = null;
 		while (!match_rbrace()) {
-			if (!field_buffer_initialized) {
-				fields = new std::vector<Stmt*>();
-				field_buffer_initialized = true;
-			}
-
 			CONSUME_IDENTIFIER_CON(f_identifier);
 			CONSUME_DATA_TYPE_CON(f_data_type);
-			consume_semicolon();
-			fields->push_back(var_decl_create(
-								  f_identifier,
-								  f_data_type,
-								  null));
+			CONSUME_SEMICOLON_CON;
+			buf_push(fields, var_decl_create(
+						 f_identifier,
+						 f_data_type,
+						 null));
 			CHECK_EOF(null);
 		}
 		return struct_create(identifier,
@@ -301,7 +306,7 @@ Stmt* Parser::stmt() {
 			}
 			else {
 				EXPR_ND(initializer);
-				consume_semicolon();
+				CONSUME_SEMICOLON;
 				
 				return var_decl_create(
 					identifier,
@@ -314,7 +319,7 @@ Stmt* Parser::stmt() {
 			if (match_double_colon()) {
 				EXPR_ND(initializer);
 			}
-			consume_semicolon();
+			CONSUME_SEMICOLON;
 			
 			return var_decl_create(
 				identifier,
@@ -327,13 +332,13 @@ Stmt* Parser::stmt() {
 
 Stmt* Parser::expr_stmt() {
 	EXPR(e);
-	consume_semicolon();
+	CONSUME_SEMICOLON;
 	return expr_stmt_create(e);
 }
 
 #define STMT_CREATE(name) Stmt* name = new Stmt; 
 
-Stmt* Parser::struct_create(Token* identifier, std::vector<Stmt*>* fields) {
+Stmt* Parser::struct_create(Token* identifier, Stmt** fields) {
 	STMT_CREATE(stmt);
 	stmt->type = S_STRUCT;
 	stmt->struct_stmt.identifier = identifier;
@@ -341,7 +346,7 @@ Stmt* Parser::struct_create(Token* identifier, std::vector<Stmt*>* fields) {
 	return stmt;
 }
 
-Stmt* Parser::func_decl_create(Token* identifier, std::vector<Stmt*>* params, DataType* return_data_type, std::vector<Stmt*>* body) {
+Stmt* Parser::func_decl_create(Token* identifier, Stmt** params, DataType* return_data_type, Stmt** body) {
 	STMT_CREATE(stmt);
 	stmt->type = S_FUNC_DECL;
 	stmt->func_decl.identifier = identifier;
@@ -811,14 +816,14 @@ Token* Parser::current() {
 	if (token_idx >= tokens_len) {
 		return null;
 	}
-	return (*tokens)[token_idx];
+	return tokens[token_idx];
 }
 
 Token* Parser::previous() {
 	if (token_idx >= tokens_len+1) {
 		return null;
 	}
-	return (*tokens)[token_idx-1];
+	return tokens[token_idx-1];
 }
 
 void Parser::goto_next_token() {

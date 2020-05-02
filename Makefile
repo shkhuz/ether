@@ -19,12 +19,15 @@ LD := g++
 CFLAGS := -I$(INC_DIR) -D_DEBUG -Wall -Wextra -Wshadow -Wno-write-strings -m64 -g -O0
 LDFLAGS :=
 
+ETHER_SRC_FILE := res/hello.eth
+ETHER_OBJ_FILE := $(addsuffix .o, $(ETHER_SRC_FILE))
+
 run: $(BIN_FILE)
-	$(BIN_FILE) -o hello res/hello.eth
-	gcc -o $(BIN_DIR)/a.out res/hello.o -Wl,--dynamic-linker=/usr/lib64/ld-linux-x86-64.so.2 
+	$(BIN_FILE) -o hello $(ETHER_SRC_FILE)
+	gcc -o $(BIN_DIR)/a.out $(ETHER_OBJ_FILE) -Wl,--dynamic-linker=/usr/lib64/ld-linux-x86-64.so.2 
 
 debug: $(BIN_FILE)
-	gdb -x gdb_init --args $(BIN_FILE) -o hello res/hello.eth
+	gdb -x .dev/gdb_init --args $(BIN_FILE) -o hello $(ETHER_SRC_FILE)
 
 $(BIN_FILE): $(OBJ_FILES)
 	mkdir -p $(dir $@)

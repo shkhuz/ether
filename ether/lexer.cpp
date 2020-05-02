@@ -4,7 +4,7 @@
 LexerOutput Lexer::lex(SourceFile* _srcfile) {
 	srcfile = _srcfile;
 	
-	tokens = new std::vector<Token*>();
+	tokens = null;
 	error_count = 0;
 	
 	start = srcfile->contents;
@@ -319,44 +319,44 @@ void Lexer::add(TokenType type) {
 }
 
 void Lexer::add_in(TokenType type) {
-	tokens->push_back(token_create(
-						  str_intern_range(start, current),
-						  start,
-						  current,
-						  type,
-						  srcfile,
-						  line, 
-						  compute_column(),
-						  current - start));
+	buf_push(tokens, token_create(
+				 str_intern_range(start, current),
+				 start,
+				 current,
+				 type,
+				 srcfile,
+				 line, 
+				 compute_column(),
+				 current - start));
 }
 
 void Lexer::add_eof() {
 	Token* last_token = null;
 	char* eof_string = "*EOF*";
-	if (!tokens->empty()) {
-		last_token = tokens->at(tokens->size()-1);
-		tokens->push_back(token_create(
-							  eof_string,
-							  last_token->end,
-							  last_token->end,
-							  T_EOF,
-							  srcfile,
-							  last_token->line, 
-							  last_token->column +
-							  last_token->char_count,
-							  1));
+	if (!buf_empty(tokens)) {
+		last_token = buf_last(tokens);
+		buf_push(tokens, token_create(
+					 eof_string,
+					 last_token->end,
+					 last_token->end,
+					 T_EOF,
+					 srcfile,
+					 last_token->line, 
+					 last_token->column +
+					 last_token->char_count,
+					 1));
 	}
 	
 	else {
-		tokens->push_back(token_create(
-							  eof_string,
-							  null,
-							  null,
-							  T_EOF,
-							  srcfile,
-							  1,
-							  1,
-							  1));
+		buf_push(tokens, token_create(
+					 eof_string,
+					 null,
+					 null,
+					 T_EOF,
+					 srcfile,
+					 1,
+					 1,
+					 1));
 	}
 }
 

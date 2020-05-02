@@ -1,20 +1,21 @@
 #include <ether.hpp>
+#include <str_intern.hpp>
 
-static std::vector<StrIntern> interns;
+static StrIntern* interns;
 
 char* str_intern_range(char* start, char* end) {
 	u64 len = end - start;
-	for (auto it = interns.begin(); it != interns.end(); ++it) {
-		if (it->len == len &&
-			strncmp(it->str, start, len) == false) {
-			return it->str;
+	buf_loop(interns, i) {
+		if (interns[i].len == len &&
+			strncmp(interns[i].str, start, len) == false) {
+			return interns[i].str;
 		}
 	}
 
 	char* str = (char*)malloc(len + 1);
 	memcpy(str, start, len);
 	str[len] = 0;
-	interns.emplace_back((StrIntern){ str, len });
+	buf_push(interns, (StrIntern){ str, len });
 	return str;
 }
 

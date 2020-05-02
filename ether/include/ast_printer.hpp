@@ -6,10 +6,10 @@
 #include <data_type.hpp>
 
 struct AstPrinter {
-	std::vector<Stmt*>* stmts;
+	Stmt** stmts;
 	u64 tab_count;
 	
-	void print(std::vector<Stmt*>* _stmts);
+	void print(Stmt** _stmts);
 
 private:
 	void print_stmt(Stmt* stmt);

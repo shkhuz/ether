@@ -1,4 +1,5 @@
 #include <ether.hpp>
+#include <io.hpp>
 
 SourceFile* read_file(const char* fpath) {
 	/* TODO: more thorough error checking */

@@ -20,9 +20,11 @@ init :: {
 }
 
 struct new {
-	init;
+	init wq;
 	a wq;
-	b wq;
+	a e
+	w d;
+	b  ;
 }
 
 add :: (a int, b ) 123 {
@@ -30,3 +32,4 @@ add :: (a int, b ) 123 {
 }
 
 error :: ;
+init;

@@ -20,20 +20,47 @@ void ether_abort(const char* fmt, ...) {
 	ether_abort_no_args();
 }
 
+static void buf_test() {
+	int* buf = null;
+	buf_push(buf, 23);
+	buf_push(buf, 1097);
+	buf_push(buf, 23912032);
+	assert(buf[0] == 23);
+	assert(buf[1] == 1097);
+	assert(buf[2] == 23912032);
+	assert(buf_last(buf) == 23912032);
+	assert(!buf_empty(buf));
+
+	char* literal = null;
+	buf_push(literal, 'h');
+	buf_push(literal, 'e');
+	buf_push(literal, 'l');
+	buf_push(literal, 'l');
+	buf_push(literal, 'o');
+	buf_push(literal, '\0');
+	assert(strncmp(literal, "hello", 5) == 0);
+	assert(buf_last(literal) == '\0');
+	assert(!buf_empty(literal));
+}
+
 int main(int argc, char** argv) {
+#ifdef _DEBUG
+	buf_test();
+#endif
+	
 	char* output_exec_fpath = "a.out";
 	bool arg_parse_error = false;
 	int opt;
 	
 	while ((opt = getopt(argc, argv, "o:")) != -1) {
 		switch (opt) {
-			case 'o': {
-				output_exec_fpath = optarg;
-			} break;
+		case 'o': {
+			output_exec_fpath = optarg;
+		} break;
 				
-			case '?': {
-				arg_parse_error = false;
-			} break;
+		case '?': {
+			arg_parse_error = false;
+		} break;
 		}
 	}
 
@@ -42,18 +69,18 @@ int main(int argc, char** argv) {
 	if (arg_parse_error) {
 		ether_abort_no_args();
 	}
-	
-	std::vector<char*> source_files;
+
+	char** source_files = null;
 	for (; optind < argc; optind++) {
-		source_files.emplace_back(argv[optind]);
+		buf_push(source_files, argv[optind]);
 	}
 
-	if (source_files.empty()) {
+	if (source_files == null) {
 		ether_abort("no files specified; consider adding a ‘main.eth’ source file");
 	}
 
-	for (auto it = source_files.begin(); it != source_files.end(); ++it) {
+	buf_loop(source_files, i) {
 		Compiler compiler;
-		compiler.compile(*it, "out");
-	}
+		compiler.compile(source_files[i], "out");
+	}	
 }

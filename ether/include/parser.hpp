@@ -7,7 +7,7 @@
 #include <data_type.hpp>
 
 struct ParserOutput {
-	std::vector<Stmt*>* stmts;
+	Stmt** stmts;
 	error_code error_occured;
 };
 
@@ -20,10 +20,10 @@ enum ParserErrorLocation {
 };
 
 struct Parser {
-	std::vector<Token*>* tokens;
+	Token** tokens;
 	SourceFile* srcfile;
 
-	std::vector<Stmt*>* stmts;
+	Stmt** stmts;
 	
 	u64 token_idx;
 	u64 tokens_len;
@@ -34,7 +34,7 @@ struct Parser {
 	u64 error_brace_count;
 	bool error_lbrace_parsed = false;
 	
-	ParserOutput parse(std::vector<Token*>* _tokens, SourceFile* _srcfile);
+	ParserOutput parse(Token** _tokens, SourceFile* _srcfile);
 
 private:
 	Stmt* decl();
@@ -42,8 +42,8 @@ private:
 	Stmt* stmt();
 	Stmt* expr_stmt();
 
-	Stmt* struct_create(Token* identifier, std::vector<Stmt*>* fields);
-	Stmt* func_decl_create(Token* identifier, std::vector<Stmt*>* params, DataType* return_data_type, std::vector<Stmt*>* body);
+	Stmt* struct_create(Token* identifier, Stmt** fields);
+	Stmt* func_decl_create(Token* identifier, Stmt** params, DataType* return_data_type, Stmt** body);
 	Stmt* var_decl_create(Token* identifier, DataType* data_type, Expr* initializer);
 	Stmt* expr_stmt_create(Expr* expr);
 
