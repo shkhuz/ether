@@ -3,9 +3,32 @@ main :: {
 	array[0] = 12;
 
 	if array {
-		qw[1] = "Hello";
+		qw[1] = "Hello" + 2;
 		1 + 2;
+		if 2 | 23 || 3 && 1 && 2 {
+			do_thiSS();
+		}
+		elif 2 | 3 || 34+ 2 && 893 | 33 || 34 & 23 {
+		}
+		if wq[8] == 2 {
+		}
+		elif wq[1] != wq[32] {
+		}
+		else {
+			arr [5]^char;
+			if arr[0] <= 3 ||
+			   arr[1] >= 5 ||
+			   arr[2] > (3 + 3) ||
+			   arr[3] < (5 & 3) {
+			}
+			else {
+				arr[2] = arr[2] << 2;
+				arr[3 + 2] = 2 >> 1;
+				arr[2 * 3] = 3 / 4 % 3;
+			}
+		}
 	}
+	
 	elif 1 + 2 {
 		puts("heello");
 		1 + 3 - 3;

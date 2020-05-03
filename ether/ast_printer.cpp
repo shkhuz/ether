@@ -154,9 +154,6 @@ void AstPrinter::print_expr_stmt(Stmt* stmt) {
 
 void AstPrinter::print_expr(Expr* expr) {
 	switch (expr->type) {
-	case E_ASSIGN:
-		print_assign(expr);
-		break;
 	case E_BINARY:
 		print_binary(expr);
 		break;
@@ -184,18 +181,14 @@ void AstPrinter::print_expr(Expr* expr) {
 	}
 }
 
-void AstPrinter::print_assign(Expr* expr) {
-	print_expr(expr->assign.left);
-	print_string(" = ");
-	print_expr(expr->assign.value);
-}
-
 void AstPrinter::print_binary(Expr* expr) {
+	print_lparen();
 	print_expr(expr->binary.left);
 	print_space();
 	print_token(expr->binary.op);
 	print_space();
 	print_expr(expr->binary.right);
+	print_rparen();
 }
 
 void AstPrinter::print_cast(Expr* expr) {

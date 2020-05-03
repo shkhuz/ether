@@ -4,7 +4,6 @@
 #include <vector>
 
 enum ExprType {
-	E_ASSIGN,
 	E_BINARY,
 	E_CAST,
 	E_FUNC_CALL,
@@ -41,11 +40,6 @@ struct Expr {
 			Expr* index;
 		} array_access;
 		
-		struct {
-			Expr* left;
-			Expr* value;
-		} assign;
-
 		struct {
 			Expr* left;
 			Expr* right;

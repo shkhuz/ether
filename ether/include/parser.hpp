@@ -52,13 +52,20 @@ private:
 
 	Expr* expr();
 	Expr* expr_assign();
+	Expr* expr_logic_or();
+	Expr* expr_logic_and();
+	Expr* expr_bitwise_or();
+	Expr* expr_bitwise_and();
+	Expr* expr_equal_not_equal();
+	Expr* expr_less_greater();
+	Expr* expr_bitwise_shift();
 	Expr* expr_binary_plus_minus();
+	Expr* expr_binary_mul_div_mod();
 	Expr* expr_cast();
 	Expr* expr_func_call_array_access();
 	Expr* expr_primary();
 	Expr* expr_grouping();
 
-	Expr* assign_create(Expr* left, Expr* value);
 	Expr* binary_create(Expr* left, Expr* right, Token* op);
 	Expr* cast_create(Token* start, DataType* cast_to, Expr* right);
 	Expr* func_call_create(Expr* left, std::vector<Expr*>* args);

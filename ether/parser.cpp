@@ -478,13 +478,14 @@ Expr* Parser::expr() {
 }
 
 Expr* Parser::expr_assign() {
-	EXPR_CI(left, expr_binary_plus_minus);
+	EXPR_CI(left, expr_logic_or);
 	if (match_by_type(T_EQUAL)) {
+		Token* equal_token = previous();
 		EXPR_CI(value, expr_assign);
 
 		if (left->type == E_VARIABLE_REF ||
 			left->type == E_ARRAY_ACCESS) {
-			return assign_create(left, value);
+			return binary_create(left, value, equal_token);
 		}
 		error_expr(left, "invalid assignment target;");
 		return null;
@@ -492,27 +493,109 @@ Expr* Parser::expr_assign() {
 	return left;
 }
 
+Expr* Parser::expr_logic_or() {
+	EXPR_CI(left, expr_logic_and);
+	while (match_by_type(T_BAR_BAR)) {
+		Token* op = previous();
+		EXPR_CI(right, expr_logic_and);
+		left = binary_create(left, right, op);
+	}
+	return left;
+}
+
+Expr* Parser::expr_logic_and() {
+	EXPR_CI(left, expr_bitwise_or);
+	while (match_by_type(T_AMPERSAND_AMPERSAND)) {
+		Token* op = previous();
+		EXPR_CI(right, expr_bitwise_or);
+		left = binary_create(left, right, op);
+	}
+	return left;
+}
+
+Expr* Parser::expr_bitwise_or() {
+	EXPR_CI(left, expr_bitwise_and);
+	while (match_by_type(T_BAR)) {
+		Token* op = previous();
+		EXPR_CI(right, expr_bitwise_and);
+		left = binary_create(left, right, op);
+	}
+	return left;
+}
+
+Expr* Parser::expr_bitwise_and() {
+	EXPR_CI(left, expr_equal_not_equal);
+	while (match_by_type(T_AMPERSAND)) {
+		Token* op = previous();
+		EXPR_CI(right, expr_equal_not_equal);
+		left = binary_create(left, right, op);
+	}
+	return left;
+}
+
+Expr* Parser::expr_equal_not_equal() {
+	EXPR_CI(left, expr_less_greater);
+	while (match_by_type(T_EQUAL_EQUAL) ||
+		   match_by_type(T_BANG_EQUAL)) {
+		Token* op = previous();
+		EXPR_CI(right, expr_less_greater);
+		left = binary_create(left, right, op);
+	}
+	return left;
+}
+
+Expr* Parser::expr_less_greater() {
+	EXPR_CI(left, expr_bitwise_shift);
+	while (match_by_type(T_LANGBKT) ||
+		   match_by_type(T_LESS_EQUAL) ||
+		   match_by_type(T_RANGBKT) ||
+		   match_by_type(T_GREATER_EQUAL)) {
+		Token* op = previous();
+		EXPR_CI(right, expr_bitwise_shift);
+		left = binary_create(left, right, op);
+	}
+	return left;
+}
+
+Expr* Parser::expr_bitwise_shift() {
+	EXPR_CI(left, expr_binary_plus_minus);
+	while (match_by_type(T_LESS_LESS) ||
+		   match_by_type(T_GREATER_GREATER)) {
+		Token* op = previous();
+		EXPR_CI(right, expr_binary_plus_minus);
+		left = binary_create(left, right, op);
+	}
+	return left;
+}
+
 Expr* Parser::expr_binary_plus_minus() {
-	EXPR_CI(left, expr_cast);
+	EXPR_CI(left, expr_binary_mul_div_mod);
 	while (match_by_type(T_PLUS) ||
 		   match_by_type(T_MINUS)) {
 		Token* op = previous();
-		
-		EXPR_CI(right, expr_binary_plus_minus);
-		
+		EXPR_CI(right, expr_binary_mul_div_mod);
 		left = binary_create(left, right, op);
-		CHECK_EOF(null);
+	}
+	return left;
+}
+
+Expr* Parser::expr_binary_mul_div_mod() {
+	EXPR_CI(left, expr_cast);
+	while (match_by_type(T_ASTERISK) ||
+		   match_by_type(T_SLASH) ||
+		   match_by_type(T_PERCENT)) {
+		Token* op = previous();
+		EXPR_CI(right, expr_cast);
+		left = binary_create(left, right, op);
 	}
 	return left;
 }
 
 Expr* Parser::expr_cast() {
 	if (match_langbkt()) {
-		Token* start = previous();
-		
+		Token* start = previous();		
 		CONSUME_DATA_TYPE(cast_to);
 		consume_rangbkt();
-
 		EXPR_CI(right, expr_grouping);
 		
 		return cast_create(start, cast_to, right);
@@ -548,7 +631,6 @@ Expr* Parser::expr_func_call_array_access() {
 	else if (match_lbracket()) {
 		EXPR_CI(array_subscript, expr);
 		consume_rbracket();
-
 		return array_access_create(left, array_subscript, previous());
 	}
 	return left;
@@ -587,16 +669,6 @@ Expr* Parser::expr_grouping() {
 }
 
 #define EXPR_CREATE(name) Expr* name = new Expr();
-
-Expr* Parser::assign_create(Expr* left, Expr* value) {
-	EXPR_CREATE(expr);
-	expr->type = E_ASSIGN;
-	expr->head = left->head;
-	expr->tail = value->tail;
-	expr->assign.left = left;
-	expr->assign.value = value;
-	return expr;
-}
 
 Expr* Parser::binary_create(Expr* left, Expr* right, Token* op) {
 	EXPR_CREATE(expr);
@@ -792,6 +864,12 @@ DataType* Parser::match_data_type() {
 				error("expect integer literal (size should be known at compile-time);");
 				return null;
 			}
+		}
+		if (current()->type != T_RBRACKET) {
+			for (u8 i = 0; i < 2; ++i) {
+				goto_previous_token();
+			}
+			return null;			
 		}
 		array_matched = true;
 		array_elem_count = previous();

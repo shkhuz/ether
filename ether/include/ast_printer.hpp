@@ -22,7 +22,6 @@ private:
 	void print_expr_stmt(Stmt* stmt);
 
 	void print_expr(Expr* expr);
-	void print_assign(Expr* expr);
 	void print_binary(Expr* expr);
 	void print_cast(Expr* expr);
 	void print_func_call(Expr* expr);
