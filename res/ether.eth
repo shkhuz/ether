@@ -59,7 +59,20 @@ main :: {
 		putn(i);
 	}
 
-	return <char>(12);
+	var :: get_var();
+
+	if !var {
+		var_2 :: get_var_2();
+		if var_2 {
+			^var_2 = 2;
+			normal_integer :: 123;
+			var = &normal_integer;
+		}
+	}
+
+	arr[2].elem = 3;
+
+	return <char>(<int>('d'));
 }
 
 struct System {

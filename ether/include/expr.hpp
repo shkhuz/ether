@@ -5,9 +5,11 @@
 
 enum ExprType {
 	E_BINARY,
+	E_UNARY,
 	E_CAST,
 	E_FUNC_CALL,
 	E_ARRAY_ACCESS,
+	E_MEMBER_ACCESS,
 	E_VARIABLE_REF,
 	E_NUMBER,
 	E_STRING,
@@ -39,6 +41,11 @@ struct Expr {
 			Expr* left;
 			Expr* index;
 		} array_access;
+
+		struct {
+			Expr* left;
+			Token* right;
+		} member_access;
 		
 		struct {
 			Expr* left;
@@ -46,6 +53,11 @@ struct Expr {
 			Token* op;
 		} binary;
 
+		struct {
+			Token* op;
+			Expr* right;
+		} unary;
+		
 		struct {
 			DataType* cast_to;
 			Expr* right;

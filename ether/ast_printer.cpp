@@ -191,6 +191,9 @@ void AstPrinter::print_expr(Expr* expr) {
 	case E_BINARY:
 		print_binary(expr);
 		break;
+	case E_UNARY:
+		print_unary(expr);
+		break;
 	case E_CAST:
 		print_cast(expr);
 		break;
@@ -199,6 +202,9 @@ void AstPrinter::print_expr(Expr* expr) {
 		break;
 	case E_ARRAY_ACCESS:
 		print_array_access(expr);
+		break;
+	case E_MEMBER_ACCESS:
+		print_member_access(expr);
 		break;
 	case E_VARIABLE_REF:
 		print_token(expr->variable_ref.identifier);
@@ -222,6 +228,13 @@ void AstPrinter::print_binary(Expr* expr) {
 	print_token(expr->binary.op);
 	print_space();
 	print_expr(expr->binary.right);
+	print_rparen();
+}
+
+void AstPrinter::print_unary(Expr* expr) {
+	print_lparen();
+	print_token(expr->unary.op);
+	print_expr(expr->unary.right);
 	print_rparen();
 }
 
@@ -254,6 +267,14 @@ void AstPrinter::print_array_access(Expr* expr) {
 	print_char('[');
 	print_expr(expr->array_access.index);
 	print_char(']');
+}
+
+void AstPrinter::print_member_access(Expr* expr) {
+	print_lparen();
+	print_expr(expr->member_access.left);
+	print_char('.');
+	print_token(expr->member_access.right);
+	print_rparen();
 }
 
 void AstPrinter::print_string(Expr* expr) {

@@ -569,17 +569,19 @@ Stmt* Parser::expr_stmt_create(Expr* expr) {
 }
 
 Expr* Parser::expr() {
-	return expr_assign();
+	return expr_precedence_14();
 }
 
-Expr* Parser::expr_assign() {
-	EXPR_CI(left, expr_logic_or);
+Expr* Parser::expr_precedence_14() {
+	EXPR_CI(left, expr_precedence_12);
 	if (match_by_type(T_EQUAL)) {
 		Token* equal_token = previous();
-		EXPR_CI(value, expr_assign);
+		EXPR_CI(value, expr_precedence_14);
 
 		if (left->type == E_VARIABLE_REF ||
-			left->type == E_ARRAY_ACCESS) {
+			left->type == E_ARRAY_ACCESS ||
+			left->type == E_MEMBER_ACCESS ||
+			(left->type == E_UNARY && left->unary.op->type == T_CARET)) {
 			return binary_create(left, value, equal_token);
 		}
 		error_expr(left, "invalid assignment target;");
@@ -588,150 +590,185 @@ Expr* Parser::expr_assign() {
 	return left;
 }
 
-Expr* Parser::expr_logic_or() {
-	EXPR_CI(left, expr_logic_and);
+Expr* Parser::expr_precedence_12() {
+	EXPR_CI(left, expr_precedence_11);
 	while (match_by_type(T_BAR_BAR)) {
 		Token* op = previous();
-		EXPR_CI(right, expr_logic_and);
+		EXPR_CI(right, expr_precedence_11);
 		left = binary_create(left, right, op);
 	}
 	return left;
 }
 
-Expr* Parser::expr_logic_and() {
-	EXPR_CI(left, expr_bitwise_or);
+Expr* Parser::expr_precedence_11() {
+	EXPR_CI(left, expr_precedence_9);
 	while (match_by_type(T_AMPERSAND_AMPERSAND)) {
 		Token* op = previous();
-		EXPR_CI(right, expr_bitwise_or);
+		EXPR_CI(right, expr_precedence_9);
 		left = binary_create(left, right, op);
 	}
 	return left;
 }
 
-Expr* Parser::expr_bitwise_or() {
-	EXPR_CI(left, expr_bitwise_and);
+Expr* Parser::expr_precedence_9() {
+	EXPR_CI(left, expr_precedence_8);
 	while (match_by_type(T_BAR)) {
 		Token* op = previous();
-		EXPR_CI(right, expr_bitwise_and);
+		EXPR_CI(right, expr_precedence_8);
 		left = binary_create(left, right, op);
 	}
 	return left;
 }
 
-Expr* Parser::expr_bitwise_and() {
-	EXPR_CI(left, expr_equal_not_equal);
+Expr* Parser::expr_precedence_8() {
+	EXPR_CI(left, expr_precedence_7);
 	while (match_by_type(T_AMPERSAND)) {
 		Token* op = previous();
-		EXPR_CI(right, expr_equal_not_equal);
+		EXPR_CI(right, expr_precedence_7);
 		left = binary_create(left, right, op);
 	}
 	return left;
 }
 
-Expr* Parser::expr_equal_not_equal() {
-	EXPR_CI(left, expr_less_greater);
+Expr* Parser::expr_precedence_7() {
+	EXPR_CI(left, expr_precedence_6);
 	while (match_by_type(T_EQUAL_EQUAL) ||
 		   match_by_type(T_BANG_EQUAL)) {
 		Token* op = previous();
-		EXPR_CI(right, expr_less_greater);
+		EXPR_CI(right, expr_precedence_6);
 		left = binary_create(left, right, op);
 	}
 	return left;
 }
 
-Expr* Parser::expr_less_greater() {
-	EXPR_CI(left, expr_bitwise_shift);
+Expr* Parser::expr_precedence_6() {
+	EXPR_CI(left, expr_precedence_5);
 	while (match_by_type(T_LANGBKT) ||
 		   match_by_type(T_LESS_EQUAL) ||
 		   match_by_type(T_RANGBKT) ||
 		   match_by_type(T_GREATER_EQUAL)) {
 		Token* op = previous();
-		EXPR_CI(right, expr_bitwise_shift);
+		EXPR_CI(right, expr_precedence_5);
 		left = binary_create(left, right, op);
 	}
 	return left;
 }
 
-Expr* Parser::expr_bitwise_shift() {
-	EXPR_CI(left, expr_binary_plus_minus);
+Expr* Parser::expr_precedence_5() {
+	EXPR_CI(left, expr_precedence_4);
 	while (match_by_type(T_LESS_LESS) ||
 		   match_by_type(T_GREATER_GREATER)) {
 		Token* op = previous();
-		EXPR_CI(right, expr_binary_plus_minus);
+		EXPR_CI(right, expr_precedence_4);
 		left = binary_create(left, right, op);
 	}
 	return left;
 }
 
-Expr* Parser::expr_binary_plus_minus() {
-	EXPR_CI(left, expr_binary_mul_div_mod);
+Expr* Parser::expr_precedence_4() {
+	EXPR_CI(left, expr_precedence_3);
 	while (match_by_type(T_PLUS) ||
 		   match_by_type(T_MINUS)) {
 		Token* op = previous();
-		EXPR_CI(right, expr_binary_mul_div_mod);
+		EXPR_CI(right, expr_precedence_3);
 		left = binary_create(left, right, op);
 	}
 	return left;
 }
 
-Expr* Parser::expr_binary_mul_div_mod() {
-	EXPR_CI(left, expr_cast);
+Expr* Parser::expr_precedence_3() {
+	EXPR_CI(left, expr_precedence_2);
 	while (match_by_type(T_ASTERISK) ||
 		   match_by_type(T_SLASH) ||
 		   match_by_type(T_PERCENT)) {
 		Token* op = previous();
-		EXPR_CI(right, expr_cast);
+		EXPR_CI(right, expr_precedence_2);
 		left = binary_create(left, right, op);
 	}
 	return left;
 }
 
-Expr* Parser::expr_cast() {
+Expr* Parser::expr_precedence_2() {
+	if (match_by_type(T_PLUS) ||
+		match_by_type(T_MINUS)) {
+		Token* op = previous();
+		EXPR_CI(right, expr_precedence_2);		
+		return unary_create(op, right);
+	}
+
+	if (match_by_type(T_BANG) ||
+		match_by_type(T_TILDE)) {
+		Token* op = previous();
+		EXPR_CI(right, expr_precedence_2);
+		return unary_create(op, right);
+	}
+	
 	if (match_langbkt()) {
 		Token* start = previous();		
 		CONSUME_DATA_TYPE(cast_to);
 		consume_rangbkt();
 		EXPR_CI(right, expr_grouping);
-		
 		return cast_create(start, cast_to, right);
 	}
-	return expr_func_call_array_access();
+
+	if (match_by_type(T_CARET)) {
+		Token* op = previous();
+		EXPR_CI(right, expr_precedence_2);
+		return unary_create(op, right);
+	}
+
+	if (match_by_type(T_AMPERSAND)) {
+		Token* op = previous();
+		EXPR_CI(right, expr_precedence_2);
+		return unary_create(op, right);
+	}
+	return expr_precedence_1();
 }
 
-Expr* Parser::expr_func_call_array_access() {
-	EXPR_CI(left, expr_primary);
-	if (match_lparen()) {
-		if (left->type != E_VARIABLE_REF) {
-			error_expr(left, "invalid operand to call expression; ");
-			return null;
-		}
-		std::vector<Expr*>* args = null;
-		bool args_buffer_initialized = false;
-		if (!match_rparen()) {
-			do {
-				if (!args_buffer_initialized) {
-					args = new std::vector<Expr*>();
-					args_buffer_initialized = true;
-				}
+Expr* Parser::expr_precedence_1() {
+	EXPR_CI(left, expr_precedence_0);
+	while (match_lparen() ||
+		   match_lbracket() ||
+		   match_by_type(T_DOT)) {
+		
+		if (previous()->type == T_LPAREN) {
+			if (left->type != E_VARIABLE_REF) {
+				error_expr(left, "invalid operand to call expression; ");
+				return null;
+			}
+			std::vector<Expr*>* args = null;
+			bool args_buffer_initialized = false;
+			if (!match_rparen()) {
+				do {
+					if (!args_buffer_initialized) {
+						args = new std::vector<Expr*>();
+						args_buffer_initialized = true;
+					}
 
-				EXPR_CI(arg, expr);	
-				args->push_back(arg);
-				CHECK_EOF(null);
-			} while (match_by_type(T_COMMA));
-			consume_rparen();
+					EXPR_CI(arg, expr);	
+					args->push_back(arg);
+					CHECK_EOF(null);
+				} while (match_by_type(T_COMMA));
+				consume_rparen();
+			}
+			left = func_call_create(left, args);
 		}
-		return func_call_create(left, args);
-	}
-	
-	else if (match_lbracket()) {
-		EXPR_CI(array_subscript, expr);
-		consume_rbracket();
-		return array_access_create(left, array_subscript, previous());
+
+		else if (previous()->type == T_LBRACKET) {
+			EXPR_CI(array_subscript, expr);
+			consume_rbracket();
+			left = array_access_create(left, array_subscript, previous());
+		}
+
+		else if (previous()->type == T_DOT) {
+			CONSUME_IDENTIFIER(right);
+			return member_access_create(left, right);
+		}
 	}
 	return left;
 }
 
-Expr* Parser::expr_primary() {
+Expr* Parser::expr_precedence_0() {
 	if (match_identifier()) {
 		return variable_ref_create(previous());
 	}	
@@ -776,6 +813,16 @@ Expr* Parser::binary_create(Expr* left, Expr* right, Token* op) {
 	return expr;
 }
 
+Expr* Parser::unary_create(Token* op, Expr* right) {
+	EXPR_CREATE(expr);
+	expr->type = E_UNARY;
+	expr->head = op;
+	expr->tail = right->tail;
+	expr->unary.op = op;
+	expr->unary.right = right;
+	return expr;
+}
+
 Expr* Parser::cast_create(Token* start, DataType* cast_to, Expr* right) {
 	EXPR_CREATE(expr);
 	expr->type = E_CAST;
@@ -808,6 +855,16 @@ Expr* Parser::array_access_create(Expr* left, Expr* index, Token* end) {
 	expr->tail = end;
 	expr->array_access.left = left;
 	expr->array_access.index = index;
+	return expr;
+}
+
+Expr* Parser::member_access_create(Expr* left, Token* right) {
+	EXPR_CREATE(expr);
+	expr->type = E_MEMBER_ACCESS;
+	expr->head = left->head;
+	expr->tail = right;
+	expr->member_access.left = left;
+	expr->member_access.right = right;
 	return expr;
 }
 
