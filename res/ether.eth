@@ -1,4 +1,4 @@
-main :: {
+main :: (argc hello, argv infd) {
 	array [100]int;
 	array[0] = 12;
 

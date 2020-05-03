@@ -252,8 +252,8 @@ Stmt* Parser::decl() {
 				if (!(func_data_type = match_data_type())) {
 					if (!match_lbrace()) {
 						error("expect function return type;");
-						goto got_lbrace;
 					}
+					goto got_lbrace;
 				}
 			}
 			else {
