@@ -77,6 +77,10 @@
 		consume_lbrace();						\
 		EXIT_ERROR null;						\
 	}
+	
+#define CONSUME_LBRACE_REC						\
+	consume_lbrace();							\
+	RECOVER;
 
 #define EXPR(name)								\
 	Expr* name = null;							\
@@ -102,6 +106,11 @@
 		name = expr();							\
 		EXIT_ERROR null;						\
 	}
+
+/* no declaration, recover */
+#define EXPR_ND_REC(name)						\
+	name = expr();								\
+	RECOVER;
 
 #define STMT(name)								\
 	Stmt* name = null;							\
@@ -321,6 +330,22 @@ Stmt* Parser::decl() {
 			return null;
 		}
 	}
+
+	else if (match_keyword("for")) {
+		error_loc = FOR_HEADER;
+		goto_previous_token();
+		error("for statement requires function scope;");
+		RECOVER;
+		return null;
+	}
+
+	else if (match_keyword("return")) {
+		error_loc = GLOBAL;
+		goto_previous_token();
+		error("cannot return from global scope; ");
+		RECOVER;
+		return null;
+	}
 	
 	else {
 		error("expect top-level decl statement;");
@@ -336,6 +361,10 @@ Stmt* Parser::stmt() {
 	}
 	
 	error_loc = FUNCTION_BODY;
+	if (match_semicolon()) {
+		return null;
+	}
+	
 	if (match_identifier()) {
 		Token* identifier = previous();
 		DataType* data_type = match_data_type();
@@ -386,9 +415,8 @@ Stmt* Parser::stmt() {
 		}
 
 		if (match_keyword("else")) {
-			CURRENT_ERROR;
 			if_branch(stmt, IF_ELSE_BRANCH);
-			EXIT_ERROR null;
+			RECOVER;
 		}
 		
 		return stmt;
@@ -403,12 +431,13 @@ Stmt* Parser::stmt() {
 
 			if (!match_by_type(T_DOT_DOT)) {
 				error("expect ‘..’;");
+				RECOVER;
 				return null;
 			}
-			EXPR_ND(end);
+			EXPR_ND_REC(end);
 		}
 
-		CONSUME_LBRACE;
+		CONSUME_LBRACE_REC;
 		Stmt** body = null;
 		error_loc = FOR_BODY;
 		while (!match_rbrace()) {
@@ -422,6 +451,16 @@ Stmt* Parser::stmt() {
 		return for_stmt_create(counter,
 							   end,
 							   body);
+	}
+
+	else if (match_keyword("return")) {
+		Expr* to_return = null;
+		if (!match_semicolon()) {
+			EXPR_ND(to_return);
+			CONSUME_SEMICOLON;
+		}
+
+		return return_stmt_create(to_return);
 	}
 	
 	else if (match_keyword("elif") ||
@@ -512,6 +551,13 @@ Stmt* Parser::for_stmt_create(Token* counter, Expr* end, Stmt** body) {
 	stmt->for_stmt.counter = counter;
 	stmt->for_stmt.end = end;
 	stmt->for_stmt.body = body;
+	return stmt;
+}
+
+Stmt* Parser::return_stmt_create(Expr* to_return) {
+	STMT_CREATE(stmt);
+	stmt->type = S_RETURN;
+	stmt->return_stmt.to_return = to_return;
 	return stmt;
 }
 

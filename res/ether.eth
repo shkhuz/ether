@@ -54,10 +54,12 @@ main :: {
 		}
 	}
 
-	for i .. 23 {
+	for i .. 2 + 4 {
 		puts("iteration: ");
 		putn(i);
 	}
+
+	return <char>(12);
 }
 
 struct System {

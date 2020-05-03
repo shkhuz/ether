@@ -29,6 +29,9 @@ void AstPrinter::print_stmt(Stmt* stmt) {
 	case S_FOR:
 		print_for_stmt(stmt);
 		break;
+	case S_RETURN:
+		print_return_stmt(stmt);
+		break;
 	case S_EXPR_STMT:
 		print_expr_stmt(stmt);
 		break;
@@ -169,6 +172,13 @@ void AstPrinter::print_for_stmt(Stmt* stmt) {
 		}
 	}
 	tab_count--;
+}
+
+void AstPrinter::print_return_stmt(Stmt* stmt) {
+	print_string("RETURN ");
+	if (stmt->return_stmt.to_return) {
+		print_expr(stmt->return_stmt.to_return);
+	}
 }
 
 void AstPrinter::print_expr_stmt(Stmt* stmt) {

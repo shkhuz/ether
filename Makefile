@@ -19,7 +19,7 @@ LD := g++
 CFLAGS := -I$(INC_DIR) -D_DEBUG -Wall -Wextra -Wshadow -Wno-write-strings -m64 -g -O0
 LDFLAGS :=
 
-ETHER_SRC_FILE := res/ether.eth
+ETHER_SRC_FILE := res/hello.eth
 ETHER_OBJ_FILE := $(addsuffix .o, $(ETHER_SRC_FILE))
 
 run: $(BIN_FILE)

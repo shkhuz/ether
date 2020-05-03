@@ -42,6 +42,9 @@ elif {
 
 }
 
+for {
+}
+
 rerew :: {
 	if 3 {
 		
@@ -55,4 +58,19 @@ rerew :: {
 	else fd {
 
 	}
+
+	for d {
+	}
+
+	for {
+		sdsd :: ;
+	}
+
+	error :: ;
+
+	return 23 +;
+	return 12 +;
+	;
 }
+
+return 121 + 23;

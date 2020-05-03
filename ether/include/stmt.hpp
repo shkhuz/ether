@@ -11,6 +11,7 @@ enum StmtType {
 	S_VAR_DECL,
 	S_IF,
 	S_FOR,
+	S_RETURN,
 	S_EXPR_STMT,
 };
 
@@ -49,6 +50,11 @@ struct Stmt {
 			Expr* end;
 			Stmt** body;
 		} for_stmt;
+
+		struct {
+			Expr* to_return;
+			Stmt* function_refed;
+		} return_stmt;
 		
 		Expr* expr_stmt;
 	};
