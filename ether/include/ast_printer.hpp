@@ -19,6 +19,7 @@ private:
 	void print_var_decl(Stmt* stmt);
 	void print_if_stmt(Stmt* stmt);
 	void print_if_branch(IfBranch* branch, IfBranchType type);
+	void print_for_stmt(Stmt* stmt);
 	void print_expr_stmt(Stmt* stmt);
 
 	void print_expr(Expr* expr);

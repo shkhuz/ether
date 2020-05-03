@@ -26,6 +26,9 @@ void AstPrinter::print_stmt(Stmt* stmt) {
 	case S_IF:
 		print_if_stmt(stmt);
 		break;
+	case S_FOR:
+		print_for_stmt(stmt);
+		break;
 	case S_EXPR_STMT:
 		print_expr_stmt(stmt);
 		break;
@@ -139,6 +142,27 @@ void AstPrinter::print_if_branch(IfBranch* branch, IfBranchType type) {
 
 	tab_count++;
 	Stmt** body = branch->body;
+	if (body) {
+		buf_loop(body, s) {
+			print_stmt(body[s]);
+		}
+	}
+	tab_count--;
+}
+
+void AstPrinter::print_for_stmt(Stmt* stmt) {
+	print_string("FOR ");
+	if (stmt->for_stmt.counter) {
+		print_token(stmt->for_stmt.counter);
+		print_space();
+
+		print_string(".. ");
+		print_expr(stmt->for_stmt.end);
+	}
+	print_newline();
+	
+	tab_count++;
+	Stmt** body = stmt->for_stmt.body;
 	if (body) {
 		buf_loop(body, s) {
 			print_stmt(body[s]);

@@ -33,6 +33,18 @@
 		EXIT_ERROR null;						\
 	}
 
+#define CONSUME_DATA_TYPE_CON(name)				\
+	DataType* name = null;						\
+	{											\
+		CURRENT_ERROR;							\
+		name = consume_data_type();				\
+		CONTINUE_ERROR;							\
+	}
+
+#define CONSUME_DATA_TYPE_REC(name)				\
+	DataType* name = consume_data_type();		\
+	RECOVER;									\
+
 #define CONSUME_IDENTIFIER_CON(name)			\
 	Token* name = null;							\
 	{											\
@@ -41,13 +53,9 @@
 		CONTINUE_ERROR;							\
 	}
 
-#define CONSUME_DATA_TYPE_CON(name)				\
-	DataType* name = null;						\
-	{											\
-		CURRENT_ERROR;							\
-		name = consume_data_type();				\
-		CONTINUE_ERROR;							\
-	}
+#define CONSUME_IDENTIFIER_REC(name)			\
+	Token* name = consume_identifier();			\
+	RECOVER;									\
 
 #define CONSUME_SEMICOLON						\
 	{											\
@@ -364,6 +372,8 @@ Stmt* Parser::stmt() {
 	else if (match_keyword("if")) {
 		STMT_CREATE(stmt);
 		stmt->type = S_IF;
+		stmt->if_stmt.elif_branch = null;
+		stmt->if_stmt.else_branch = null;
 
 		if (!if_branch(stmt, IF_IF_BRANCH)) {
 			RECOVER;
@@ -380,8 +390,38 @@ Stmt* Parser::stmt() {
 			if_branch(stmt, IF_ELSE_BRANCH);
 			EXIT_ERROR null;
 		}
-
+		
 		return stmt;
+	}
+
+	else if (match_keyword("for")) {
+		error_loc = FOR_HEADER;
+		Token* counter = null;
+		Expr* end = null;
+		if (match_identifier()) {
+			counter = previous();
+
+			if (!match_by_type(T_DOT_DOT)) {
+				error("expect ‘..’;");
+				return null;
+			}
+			EXPR_ND(end);
+		}
+
+		CONSUME_LBRACE;
+		Stmt** body = null;
+		error_loc = FOR_BODY;
+		while (!match_rbrace()) {
+			STMT_CON(s);
+			if (s) {
+				buf_push(body, s);
+			}
+			CHECK_EOF(null);		
+		}
+
+		return for_stmt_create(counter,
+							   end,
+							   body);
 	}
 	
 	else if (match_keyword("elif") ||
@@ -463,6 +503,15 @@ Stmt* Parser::var_decl_create(Token* identifier, DataType* data_type, Expr* init
 	stmt->var_decl.identifier = identifier;
 	stmt->var_decl.data_type = data_type;
 	stmt->var_decl.initializer = initializer;
+	return stmt;
+}
+
+Stmt* Parser::for_stmt_create(Token* counter, Expr* end, Stmt** body) {
+	STMT_CREATE(stmt);
+	stmt->type = S_FOR;
+	stmt->for_stmt.counter = counter;
+	stmt->for_stmt.end = end;
+	stmt->for_stmt.body = body;
 	return stmt;
 }
 
@@ -1071,6 +1120,7 @@ void Parser::sync_to_next_statement() {
 	case STRUCT_BODY:
 	case FUNCTION_BODY:
 	case IF_BODY:
+	case FOR_BODY:
 		if (match_semicolon()) {
 			error_panic = false;
 			error_brace_count = 0;
@@ -1082,6 +1132,7 @@ void Parser::sync_to_next_statement() {
 	case STRUCT_HEADER:
 	case FUNCTION_HEADER:
 	case IF_HEADER:
+	case FOR_HEADER:
 		if (current()->type == T_LBRACE) {
 			if (!error_lbrace_parsed) {
 				error_lbrace_parsed = true;

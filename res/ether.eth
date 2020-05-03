@@ -53,4 +53,15 @@ main :: {
 		else {
 		}
 	}
+
+	for i .. 23 {
+		puts("iteration: ");
+		putn(i);
+	}
+}
+
+struct System {
+	code int;
+	code2 int;
+	done bool;
 }

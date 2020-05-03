@@ -10,6 +10,7 @@ enum StmtType {
 	S_FUNC_DECL,
 	S_VAR_DECL,
 	S_IF,
+	S_FOR,
 	S_EXPR_STMT,
 };
 
@@ -43,6 +44,12 @@ struct Stmt {
 			IfBranch* else_branch;
 		} if_stmt;
 
+		struct {
+			Token* counter;
+			Expr* end;
+			Stmt** body;
+		} for_stmt;
+		
 		Expr* expr_stmt;
 	};
 };

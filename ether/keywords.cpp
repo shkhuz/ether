@@ -5,5 +5,6 @@ char* keywords[KEYWORDS_LEN] = {
 	"if",
 	"elif",
 	"else",
+	"for",
 	"cast",
 };
