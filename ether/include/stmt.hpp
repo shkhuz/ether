@@ -31,12 +31,14 @@ struct Stmt {
 			Stmt** params; // params is a vector of Stmts, to ease scope later
 			DataType* return_data_type;
 			Stmt** body;
+			bool is_function;
 		} func_decl;
 		
 		struct {
 			Token* identifier;
 			DataType* data_type;
 			Expr* initializer;
+			bool is_variable;
 		} var_decl;
 
 		struct {

@@ -159,7 +159,7 @@ ParserOutput Parser::parse(Token** _tokens, SourceFile* _srcfile) {
 	error_lbrace_parsed = false;
 
 	while (current()->type != T_EOF) {
-		Stmt* stmt = decl();
+		Stmt* stmt = decl_global();
 		if (stmt) {
 			buf_push(stmts, stmt);
 		}
@@ -171,6 +171,54 @@ ParserOutput Parser::parse(Token** _tokens, SourceFile* _srcfile) {
 							ETHER_ERROR :
 							ETHER_SUCCESS);
 	return output;
+}
+
+Stmt* Parser::decl_global() {
+	if (error_panic) {
+		sync_to_next_statement();
+		return null;
+	}
+
+	if (match_keyword("extern")) {
+		CONSUME_IDENTIFIER(identifier);
+		if (match_lparen()) {
+			// extern function
+			Stmt** params = null;
+			if (!match_rparen()) {
+				do {
+					CONSUME_IDENTIFIER(p_identifier);
+					CONSUME_DATA_TYPE(p_data_type);
+					buf_push(params, var_decl_create(
+								 p_identifier,
+								 p_data_type,
+								 null,
+								 true));
+					CHECK_EOF(null);
+				} while (match_by_type(T_COMMA));
+				consume_rparen();
+			}
+
+			DataType* return_data_type = match_data_type();
+			CONSUME_SEMICOLON;
+
+			return func_decl_create(identifier,
+									params,
+									return_data_type,
+									null,
+									false);
+		}
+
+		CONSUME_DATA_TYPE(data_type);
+		CONSUME_SEMICOLON;
+
+		return var_decl_create(identifier,
+							   data_type,
+							   null,
+							   false);
+	}
+	else {
+		return decl();
+	}
 }
 
 Stmt* Parser::decl() {
@@ -195,7 +243,8 @@ Stmt* Parser::decl() {
 			return var_decl_create(
 				identifier,
 				data_type,
-				initializer);
+				initializer,
+				true);
 		}
 		
 		else {
@@ -245,7 +294,8 @@ Stmt* Parser::decl() {
 						buf_push(params, var_decl_create(
 									 p_identifier,
 									 p_data_type,
-									 null));
+									 null,
+									 true));
 						CHECK_EOF(null);
 					} while (match_by_type(T_COMMA));
 					consume_rparen();
@@ -285,7 +335,8 @@ Stmt* Parser::decl() {
 					identifier,
 					params,
 					func_data_type,
-					body);
+					body,
+					true);
 			}
 			else {
 				error_loc = GLOBAL;
@@ -296,7 +347,8 @@ Stmt* Parser::decl() {
 				return var_decl_create(
 					identifier,
 					data_type,
-					initializer);
+					initializer,
+					true);
 			}
 		}
 	}
@@ -406,7 +458,8 @@ Stmt* Parser::stmt() {
 				return var_decl_create(
 					identifier,
 					data_type,
-					initializer);				
+					initializer,
+					true);				
 			}
 		}
 		
@@ -419,7 +472,8 @@ Stmt* Parser::stmt() {
 			return var_decl_create(
 				identifier,
 				data_type,
-				initializer);
+				initializer,
+				true);
 		}
 	}
 	
@@ -557,22 +611,24 @@ Stmt* Parser::struct_create(Token* identifier, Stmt** fields) {
 	return stmt;
 }
 
-Stmt* Parser::func_decl_create(Token* identifier, Stmt** params, DataType* return_data_type, Stmt** body) {
+Stmt* Parser::func_decl_create(Token* identifier, Stmt** params, DataType* return_data_type, Stmt** body, bool is_function) {
 	STMT_CREATE(stmt);
 	stmt->type = S_FUNC_DECL;
 	stmt->func_decl.identifier = identifier;
 	stmt->func_decl.params = params;
 	stmt->func_decl.return_data_type = return_data_type;
 	stmt->func_decl.body = body;
+	stmt->func_decl.is_function = is_function;
 	return stmt;
 }
 
-Stmt* Parser::var_decl_create(Token* identifier, DataType* data_type, Expr* initializer) {
+Stmt* Parser::var_decl_create(Token* identifier, DataType* data_type, Expr* initializer, bool is_variable) {
 	STMT_CREATE(stmt);
 	stmt->type = S_VAR_DECL;
 	stmt->var_decl.identifier = identifier;
 	stmt->var_decl.data_type = data_type;
 	stmt->var_decl.initializer = initializer;
+	stmt->var_decl.is_variable = is_variable;
 	return stmt;
 }
 

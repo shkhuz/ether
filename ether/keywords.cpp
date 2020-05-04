@@ -2,6 +2,7 @@
 
 char* keywords[KEYWORDS_LEN] = {
 	"struct",
+	"extern",
 	"if",
 	"elif",
 	"else",

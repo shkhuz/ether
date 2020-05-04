@@ -41,15 +41,15 @@ struct Parser {
 	ParserOutput parse(Token** _tokens, SourceFile* _srcfile);
 
 private:
+	Stmt* decl_global();
 	Stmt* decl();
-
 	Stmt* stmt();
 	Stmt* if_branch(Stmt* if_stmt, IfBranchType type);
 	Stmt* expr_stmt();
 
 	Stmt* struct_create(Token* identifier, Stmt** fields);
-	Stmt* func_decl_create(Token* identifier, Stmt** params, DataType* return_data_type, Stmt** body);
-	Stmt* var_decl_create(Token* identifier, DataType* data_type, Expr* initializer);
+	Stmt* func_decl_create(Token* identifier, Stmt** params, DataType* return_data_type, Stmt** body, bool is_function);
+	Stmt* var_decl_create(Token* identifier, DataType* data_type, Expr* initializer, bool is_variable);
 	Stmt* for_stmt_create(Token* counter, Expr* counter_initializer, Expr* end, Stmt** body);
 	Stmt* return_stmt_create(Expr* to_return);
 	Stmt* expr_stmt_create(Expr* expr);

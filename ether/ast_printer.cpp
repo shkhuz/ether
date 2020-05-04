@@ -57,6 +57,10 @@ void AstPrinter::print_struct_stmt(Stmt* stmt) {
 }
 
 void AstPrinter::print_func_decl(Stmt* stmt) {
+	if (!stmt->func_decl.is_function) {
+		print_string("EXTERN ");
+	}
+	
 	print_string("FUNC ");
 	print_token(stmt->func_decl.identifier);
 	print_space();
@@ -83,17 +87,23 @@ void AstPrinter::print_func_decl(Stmt* stmt) {
 
 	print_newline();
 
-	tab_count++;
-	Stmt** body = stmt->func_decl.body;
-	if (body) {
-		buf_loop(body, s) {
-			print_stmt(body[s]);
+	if (stmt->func_decl.is_function) {
+		tab_count++;
+		Stmt** body = stmt->func_decl.body;
+		if (body) {
+			buf_loop(body, s) {
+				print_stmt(body[s]);
+			}
 		}
+		tab_count--;
 	}
-	tab_count--;
 }
 
 void AstPrinter::print_var_decl(Stmt* stmt) {
+	if (!stmt->var_decl.is_variable) {
+		print_string("EXTERN ");
+	}
+	
 	print_string("VAR ");
 	print_token(stmt->var_decl.identifier);
 	if (stmt->var_decl.data_type) {
