@@ -82,5 +82,5 @@ int main(int argc, char** argv) {
 	buf_loop(source_files, i) {
 		Compiler compiler;
 		compiler.compile(source_files[i], "out");
-	}	
+	}
 }

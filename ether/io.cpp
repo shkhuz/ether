@@ -20,6 +20,12 @@ SourceFile* read_file(const char* fpath) {
 	return file;
 }
 
+bool file_exists(const char* fpath) {
+	FILE* fp = fopen(fpath, "r");
+	if (fp) return true;
+	return false;
+}
+
 char* get_line_at(SourceFile* file, u64 line) {
 	assert(line != 0);
 	assert(file->contents);

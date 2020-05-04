@@ -1,5 +1,12 @@
 #pragma once
 
+struct Stmt;
+
 struct Compiler {
-	error_code compile(const char* in_file, const char* out_file);
+	Stmt** compile(const char* in_file, const char* out_file);
+};
+
+struct FileDecl {
+	char* fpath;
+	Stmt** decls;
 };

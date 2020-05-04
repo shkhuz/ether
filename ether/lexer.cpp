@@ -95,6 +95,7 @@ LexerOutput Lexer::lex(SourceFile* _srcfile) {
 		case ',':	add(T_COMMA); break;
 		case '^':	add(T_CARET); break;
 		case '~':	add(T_TILDE); break;
+		case '#':	add(T_POUND); break;
 
 		case 'A': case 'B': case 'C': case 'D':
 		case 'E': case 'F': case 'G': case 'H':

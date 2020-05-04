@@ -32,6 +32,7 @@ enum TokenType {
 	T_COMMA,
 	T_DOT,
 	T_CARET,
+	T_POUND,
 
 	T_DOUBLE_COLON,
 	T_PLUS_EQUAL,

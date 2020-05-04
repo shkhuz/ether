@@ -1,8 +1,6 @@
-#import "ether.eth"
+#import "ether.eth";
 
 main :: {
 	ether Ether;
 	ether.init();
 }
-
-extern ether.init();

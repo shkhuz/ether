@@ -1,5 +1,8 @@
 #include <ether.hpp>
 #include <parser.hpp>
+#include <compiler.hpp>
+
+#include <string>
 
 #define CURRENT_ERROR u64 last_error_count = error_count
 #define EXIT_ERROR if (error_count > last_error_count) return
@@ -148,6 +151,7 @@ ParserOutput Parser::parse(Token** _tokens, SourceFile* _srcfile) {
 	srcfile = _srcfile;
 	
 	stmts = null;
+	decls = null;
 		
 	token_idx = 0;
 	tokens_len = buf_len(_tokens);
@@ -158,6 +162,9 @@ ParserOutput Parser::parse(Token** _tokens, SourceFile* _srcfile) {
 	error_brace_count = 0;
 	error_lbrace_parsed = false;
 
+	current_struct = null;
+	pending_imports = null;
+	
 	while (current()->type != T_EOF) {
 		Stmt* stmt = decl_global();
 		if (stmt) {
@@ -167,6 +174,7 @@ ParserOutput Parser::parse(Token** _tokens, SourceFile* _srcfile) {
 
 	ParserOutput output;
 	output.stmts = stmts;
+	output.decls = decls;
 	output.error_occured = (error_count > 0 ?
 							ETHER_ERROR :
 							ETHER_SUCCESS);
@@ -179,6 +187,45 @@ Stmt* Parser::decl_global() {
 		return null;
 	}
 
+	if (match_by_type(T_POUND)) {
+		if (match_keyword("import")) {
+			if (!match_by_type(T_STRING)) {
+				error("expect compile-time string literal;");
+				RECOVER;
+				return null;
+			}
+			Token* fpath_token = previous();
+			CONSUME_SEMICOLON;
+
+			std::string fpath_rel_file = std::string(fpath_token->lexeme);
+			std::string current_file = std::string(srcfile->fpath);
+			size_t last_slash = current_file.find_last_of('/');
+			if (last_slash == std::string::npos) {
+				last_slash = 0;
+			}
+			std::string current_dir = current_file.substr(0,
+														  (last_slash == 0 ?
+														   last_slash :
+														   last_slash + 1));
+			current_dir.append(fpath_rel_file);
+			printf("FILE: %s\n", current_dir.c_str());
+			if (!file_exists(current_dir.c_str())) {
+				error_token(fpath_token,
+							"cannot find file; ");
+				return null;
+			}
+
+			// TODO: push output obj name
+			buf_push(pending_imports, str_intern(
+						 const_cast<char*>(current_dir.c_str())));
+		}
+		else {
+			error("expect directive;");
+			RECOVER;
+			return null;
+		}
+	}
+	
 	if (match_keyword("extern")) {
 		CONSUME_IDENTIFIER(identifier);
 		if (match_lparen()) {
@@ -218,11 +265,11 @@ Stmt* Parser::decl_global() {
 							   false);
 	}
 	else {
-		return decl();
+		return decl(true);
 	}
 }
 
-Stmt* Parser::decl() {
+Stmt* Parser::decl(bool is_global) {
 	if (error_panic) {
 		sync_to_next_statement();
 		return null;
@@ -242,11 +289,20 @@ Stmt* Parser::decl() {
 				EXPR_ND(initializer);
 			}
 			CONSUME_SEMICOLON;
-			return var_decl_create(
-				identifier,
-				data_type,
-				initializer,
-				true);
+			if (is_global) {
+				return global_var_decl_create(
+					identifier,
+					data_type,
+					initializer,
+					true);
+			}
+			else {
+				return var_decl_create(
+					identifier,
+					data_type,
+					initializer,
+					true);
+			}
 		}
 		
 		else {
@@ -350,12 +406,21 @@ Stmt* Parser::decl() {
 				previous_data_type(func_data_type);
 				EXPR_ND(initializer);
 				CONSUME_SEMICOLON;
-				
-				return var_decl_create(
-					identifier,
-					data_type,
-					initializer,
-					true);
+
+				if (is_global) {
+					return global_var_decl_create(
+						identifier,
+						data_type,
+						initializer,
+						true);
+				}
+				else {
+					return var_decl_create(
+						identifier,
+						data_type,
+						initializer,
+						true);
+				}
 			}
 		}
 	}
@@ -367,7 +432,10 @@ Stmt* Parser::decl() {
 		error_loc = STRUCT_BODY;
 		Stmt** fields = null;
 		while (!match_rbrace()) {
-			DECL_CON(field);
+			CURRENT_ERROR;
+			Stmt* field = struct_field();
+			CONTINUE_ERROR;
+			
 			if (!field) {
 				continue;
 			}
@@ -381,7 +449,7 @@ Stmt* Parser::decl() {
 				}
 				if (!field->var_decl.data_type) {
 					error_token(field->var_decl.identifier,
-									"field must specify a type; ");
+								"field must specify a type; ");
 					error_here = true;
 					error_panic = false;
 				}
@@ -436,6 +504,12 @@ Stmt* Parser::decl() {
 	}
 
 	return null;
+}
+
+Stmt* Parser::struct_field() {
+	CURRENT_ERROR;
+	Stmt* s = decl(false);
+	EXIT_ERROR null;
 }
 
 Stmt* Parser::stmt() {
@@ -634,6 +708,27 @@ Stmt* Parser::func_decl_create(Token* identifier, Stmt** params, DataType* retur
 	stmt->func_decl.is_function = is_function;
 	stmt->func_decl.is_public = is_public;
 	stmt->func_decl.struct_in = null;
+	return stmt;
+}
+
+Stmt* Parser::global_var_decl_create(Token* identifier, DataType* data_type, Expr* initializer, bool is_variable) {
+	STMT_CREATE(stmt);
+	stmt->type = S_VAR_DECL;
+	stmt->var_decl.identifier = identifier;
+	stmt->var_decl.data_type = data_type;
+	stmt->var_decl.initializer = initializer;
+	stmt->var_decl.is_variable = is_variable;
+
+	if (is_variable) {
+		STMT_CREATE(decl);
+		decl->type = S_VAR_DECL;
+		decl->var_decl.identifier = identifier;
+		decl->var_decl.data_type = data_type;
+		decl->var_decl.initializer = null;
+		decl->var_decl.is_variable = false;
+		buf_push(decls, decl);
+	}
+	
 	return stmt;
 }
 
@@ -1397,4 +1492,15 @@ void Parser::sync_to_next_statement() {
 		break;
 	}
 	goto_next_token();
+}
+
+void Parser::add_pending_imports() {
+	buf_loop(pending_imports, i) {
+		Compiler compiler;
+		Stmt** target_decls = compiler.compile(pending_imports[i], "out");
+		
+		buf_loop(target_decls, d) {
+			buf_push(stmts, target_decls[d]);	
+		}
+	}
 }

@@ -7,6 +7,7 @@ struct SourceFile {
 };
 
 SourceFile* read_file(const char* fpath);
+bool file_exists(const char* fpath);
 char* get_line_at(SourceFile* file, u64 line);
 error_code print_file_line(SourceFile* file, u64 line);
 error_code print_file_line_with_info(SourceFile* file, u64 line);

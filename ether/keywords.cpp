@@ -1,6 +1,7 @@
 #include <ether.hpp>
 
 char* keywords[KEYWORDS_LEN] = {
+	"import",
 	"struct",
 	"extern",
 	"pub",

@@ -1,3 +1,7 @@
+#import "ether2.eth";
+
+global :: 123;
+
 main :: pub (argc hello, argv infd) {
 	array [100]int;
 	array[0] = 12;
