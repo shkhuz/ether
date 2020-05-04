@@ -2,6 +2,9 @@ main :: (argc hello, argv infd) {
 	array [100]int;
 	array[0] = 12;
 
+	sys System;
+	sys.init();
+
 	if array {
 		qw[1] = "Hello" + 2;
 		1 + 2;
@@ -54,7 +57,7 @@ main :: (argc hello, argv infd) {
 		}
 	}
 
-	for i .. 2 + 4 {
+	for i = 23 .. 2 + 4 {
 		puts("iteration: ");
 		putn(i);
 	}
@@ -79,4 +82,10 @@ struct System {
 	code int;
 	code2 int;
 	done bool;
+
+	init :: {
+		this.code = 0;
+		this.code2 = 0;
+		this.done = false;
+	}
 }

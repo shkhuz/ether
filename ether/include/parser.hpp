@@ -50,7 +50,7 @@ private:
 	Stmt* struct_create(Token* identifier, Stmt** fields);
 	Stmt* func_decl_create(Token* identifier, Stmt** params, DataType* return_data_type, Stmt** body);
 	Stmt* var_decl_create(Token* identifier, DataType* data_type, Expr* initializer);
-	Stmt* for_stmt_create(Token* counter, Expr* end, Stmt** body);
+	Stmt* for_stmt_create(Token* counter, Expr* counter_initializer, Expr* end, Stmt** body);
 	Stmt* return_stmt_create(Expr* to_return);
 	Stmt* expr_stmt_create(Expr* expr);
 

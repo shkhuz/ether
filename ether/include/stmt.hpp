@@ -47,6 +47,7 @@ struct Stmt {
 
 		struct {
 			Token* counter;
+			Expr* counter_initializer;
 			Expr* end;
 			Stmt** body;
 		} for_stmt;

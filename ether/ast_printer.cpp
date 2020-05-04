@@ -159,6 +159,12 @@ void AstPrinter::print_for_stmt(Stmt* stmt) {
 		print_token(stmt->for_stmt.counter);
 		print_space();
 
+		if (stmt->for_stmt.counter_initializer) {
+			print_string("= ");
+			print_expr(stmt->for_stmt.counter_initializer);
+			print_space();
+		}
+
 		print_string(".. ");
 		print_expr(stmt->for_stmt.end);
 	}

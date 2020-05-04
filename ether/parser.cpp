@@ -128,6 +128,14 @@
 		CONTINUE_ERROR;							\
 	}
 
+#define DECL_CON(name)							\
+	Stmt* name = null;							\
+	{											\
+		CURRENT_ERROR;							\
+		name = decl();							\
+		CONTINUE_ERROR;							\
+	}
+
 #define RECOVER									\
 	while (error_panic) {						\
 		sync_to_next_statement();				\
@@ -300,15 +308,10 @@ Stmt* Parser::decl() {
 		error_loc = STRUCT_BODY;
 		Stmt** fields = null;
 		while (!match_rbrace()) {
-			CONSUME_IDENTIFIER_CON(f_identifier);
-			CONSUME_DATA_TYPE_CON(f_data_type);
-			CONSUME_SEMICOLON_CON;
-			buf_push(fields, var_decl_create(
-						 f_identifier,
-						 f_data_type,
-						 null));
-			CHECK_EOF(null);
+			DECL_CON(field);
+			buf_push(fields, field);
 		}
+		
 		return struct_create(identifier,
 							 fields);
 	}
@@ -425,10 +428,15 @@ Stmt* Parser::stmt() {
 	else if (match_keyword("for")) {
 		error_loc = FOR_HEADER;
 		Token* counter = null;
+		Expr* counter_initializer = null;
 		Expr* end = null;
 		if (match_identifier()) {
 			counter = previous();
 
+			if (match_by_type(T_EQUAL)) {
+				EXPR_ND_REC(counter_initializer);
+			}
+			
 			if (!match_by_type(T_DOT_DOT)) {
 				error("expect ‘..’;");
 				RECOVER;
@@ -449,6 +457,7 @@ Stmt* Parser::stmt() {
 		}
 
 		return for_stmt_create(counter,
+							   counter_initializer,
 							   end,
 							   body);
 	}
@@ -545,10 +554,11 @@ Stmt* Parser::var_decl_create(Token* identifier, DataType* data_type, Expr* init
 	return stmt;
 }
 
-Stmt* Parser::for_stmt_create(Token* counter, Expr* end, Stmt** body) {
+Stmt* Parser::for_stmt_create(Token* counter, Expr* counter_initializer, Expr* end, Stmt** body) {
 	STMT_CREATE(stmt);
 	stmt->type = S_FOR;
 	stmt->for_stmt.counter = counter;
+	stmt->for_stmt.counter_initializer = counter_initializer;
 	stmt->for_stmt.end = end;
 	stmt->for_stmt.body = body;
 	return stmt;
@@ -732,7 +742,8 @@ Expr* Parser::expr_precedence_1() {
 		   match_by_type(T_DOT)) {
 		
 		if (previous()->type == T_LPAREN) {
-			if (left->type != E_VARIABLE_REF) {
+			if (left->type != E_VARIABLE_REF &&
+				left->type != E_MEMBER_ACCESS) {
 				error_expr(left, "invalid operand to call expression; ");
 				return null;
 			}
@@ -762,7 +773,7 @@ Expr* Parser::expr_precedence_1() {
 
 		else if (previous()->type == T_DOT) {
 			CONSUME_IDENTIFIER(right);
-			return member_access_create(left, right);
+			left = member_access_create(left, right);
 		}
 	}
 	return left;
