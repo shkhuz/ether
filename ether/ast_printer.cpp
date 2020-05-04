@@ -60,10 +60,17 @@ void AstPrinter::print_func_decl(Stmt* stmt) {
 	if (!stmt->func_decl.is_function) {
 		print_string("EXTERN ");
 	}
-	
+
 	print_string("FUNC ");
+	if (stmt->func_decl.struct_in) {
+		print_token(stmt->func_decl.struct_in->struct_stmt.identifier);
+		print_char('.');
+	}
 	print_token(stmt->func_decl.identifier);
 	print_space();
+	if (stmt->func_decl.is_public) {
+		print_string("PUB ");
+	}
 
 	if (stmt->func_decl.params) {
 		print_lparen();

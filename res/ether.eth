@@ -1,4 +1,4 @@
-main :: (argc hello, argv infd) {
+main :: pub (argc hello, argv infd) {
 	array [100]int;
 	array[0] = 12;
 
@@ -76,6 +76,12 @@ main :: (argc hello, argv infd) {
 	arr[2].elem = 3;
 
 	return <char>(<int>('d'));
+}
+
+init_global :: pub {
+	for i = 1 .. get_sys_count() {
+		init_system(get_sys(i));
+	}
 }
 
 struct System {

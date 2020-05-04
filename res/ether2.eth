@@ -1,0 +1,8 @@
+#import "ether.eth"
+
+main :: {
+	ether Ether;
+	ether.init();
+}
+
+extern ether.init();

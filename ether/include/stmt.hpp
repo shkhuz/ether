@@ -32,6 +32,8 @@ struct Stmt {
 			DataType* return_data_type;
 			Stmt** body;
 			bool is_function;
+			bool is_public;
+			Stmt* struct_in; // null if global
 		} func_decl;
 		
 		struct {

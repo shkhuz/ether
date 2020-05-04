@@ -205,7 +205,8 @@ Stmt* Parser::decl_global() {
 									params,
 									return_data_type,
 									null,
-									false);
+									false,
+									true);
 		}
 
 		CONSUME_DATA_TYPE(data_type);
@@ -232,6 +233,7 @@ Stmt* Parser::decl() {
 		DataType* data_type = match_data_type();
 		
 		DataType* func_data_type = null;
+		bool is_public_function = false;
 		Expr* initializer = null;
 		
 		if (data_type) {
@@ -251,6 +253,10 @@ Stmt* Parser::decl() {
 			if (!match_double_colon()) {
 				error("expect ‘::’ or data type;");
 				return null;
+			}
+
+			if (match_keyword("pub")) {
+				is_public_function = true;				
 			}
 			
 			bool has_params = false;
@@ -336,7 +342,8 @@ Stmt* Parser::decl() {
 					params,
 					func_data_type,
 					body,
-					true);
+					true,
+					is_public_function);
 			}
 			else {
 				error_loc = GLOBAL;
@@ -608,10 +615,16 @@ Stmt* Parser::struct_create(Token* identifier, Stmt** fields) {
 	stmt->type = S_STRUCT;
 	stmt->struct_stmt.identifier = identifier;
 	stmt->struct_stmt.fields = fields;
+	buf_loop(fields, f) {
+		Stmt* field = fields[f];
+		if (field->type == S_FUNC_DECL) {
+			field->func_decl.struct_in = stmt;
+		}
+	}
 	return stmt;
 }
 
-Stmt* Parser::func_decl_create(Token* identifier, Stmt** params, DataType* return_data_type, Stmt** body, bool is_function) {
+Stmt* Parser::func_decl_create(Token* identifier, Stmt** params, DataType* return_data_type, Stmt** body, bool is_function, bool is_public) {
 	STMT_CREATE(stmt);
 	stmt->type = S_FUNC_DECL;
 	stmt->func_decl.identifier = identifier;
@@ -619,6 +632,8 @@ Stmt* Parser::func_decl_create(Token* identifier, Stmt** params, DataType* retur
 	stmt->func_decl.return_data_type = return_data_type;
 	stmt->func_decl.body = body;
 	stmt->func_decl.is_function = is_function;
+	stmt->func_decl.is_public = is_public;
+	stmt->func_decl.struct_in = null;
 	return stmt;
 }
 

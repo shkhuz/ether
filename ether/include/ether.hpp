@@ -27,7 +27,7 @@
 #define ETHER_ERROR 1
 
 #define TAB_SIZE 4
-#define KEYWORDS_LEN 8
+#define KEYWORDS_LEN 9
 
 #define PRINT_TOKEN 0
 
