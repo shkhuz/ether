@@ -73,4 +73,13 @@ rerew :: {
 	;
 }
 
+struct new {
+	init :: {
+		error :: ;
+	}
+
+	field :: 23;
+	field;
+}
+
 return 121 + 23;

@@ -309,6 +309,28 @@ Stmt* Parser::decl() {
 		Stmt** fields = null;
 		while (!match_rbrace()) {
 			DECL_CON(field);
+			if (!field) {
+				continue;
+			}
+			if (field->type == S_VAR_DECL) {
+				bool error_here = false;
+				if (field->var_decl.initializer) {
+					error_expr(field->var_decl.initializer,
+							   "field cannot have an initializer; ");
+					error_here = true;
+					error_panic = false;
+				}
+				if (!field->var_decl.data_type) {
+					error_token(field->var_decl.identifier,
+									"field must specify a type; ");
+					error_here = true;
+					error_panic = false;
+				}
+
+				if (error_here) {
+					continue;
+				}
+			}
 			buf_push(fields, field);
 		}
 		
@@ -1015,8 +1037,12 @@ DataType* Parser::match_data_type() {
 	bool array_matched = false;
 	bool pointer_matched = false;
 	Token* array_elem_count = null;
+	Token* start = null;
 
 	if (match_lbracket()) {
+		if (!start) {
+			start = previous();
+		}
 		is_array = true;
 		if (!match_by_type(T_INTEGER)) {
 			if (current()->type == T_RBRACKET) {
@@ -1041,6 +1067,9 @@ DataType* Parser::match_data_type() {
 	
 	u8 pointer_count = 0;
 	while (match_by_type(T_CARET)) {
+		if (!start) {
+			start = previous();
+		}
 		pointer_matched = true;
 		pointer_count++;
 	}
@@ -1059,11 +1088,16 @@ DataType* Parser::match_data_type() {
 		}
 		return null;
 	}
+	
 	identifier = previous();
+	if (!start) {
+		start = previous();
+	}	
 	return data_type_create(identifier,
 							pointer_count,
 							is_array,
-							array_elem_count);
+							array_elem_count,
+							start);
 }
 
 void Parser::previous_data_type(DataType* data_type) {
@@ -1226,6 +1260,31 @@ void Parser::error_expr(Expr* expr, const char* fmt, ...) {
 			   fmt,
 			   ap);
 	va_end(ap);
+}
+
+void Parser::error_data_type(DataType* data_type, const char* fmt, ...) {
+	assert(data_type);
+	u64 char_count = data_type->identifier->end - data_type->start->start;
+	va_list ap;
+	va_start(ap, fmt);
+	error_root(data_type->identifier->line,
+			   data_type->identifier->column,
+			   char_count,
+			   fmt,
+			   ap);
+	va_end(ap);
+}
+
+void Parser::error_token(Token* token, const char* fmt, ...) {
+	u64 char_count = token->end - token->start;
+	va_list ap;
+	va_start(ap, fmt);
+	error_root(token->line,
+			   token->column,
+			   char_count,
+			   fmt,
+			   ap);
+	va_end(ap);	
 }
 
 void Parser::sync_to_next_statement() {
