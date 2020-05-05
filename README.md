@@ -6,7 +6,7 @@ A low-level general purpose programming language built to improve on C.
 ### Hello World
 ```
 main :: pub int {
-    putsln("Hello, world!");
+    putsl("Hello, world!");
 }
 ```
 
@@ -14,7 +14,33 @@ main :: pub int {
 ```
 main :: pub int {
     for i .. 100 {
-        printfln("iteration: %");
+        printfl("iteration: %", i);
     }
+}
+```
+
+### Variables
+```
+main :: pub int {
+    integer :: 102;
+    printfl("integer is %", integer);
+
+    letter :: 'e';
+    printfl("letter is %", letter);
+    
+    str :: "hello";
+    printfl("string is %", str);
+
+    boolean :: false;
+    printfl("boolean is %", boolean);
+}
+```
+
+### Variable Type Specifier
+```
+main :: pub int {
+    long_integer u64; // u64 is the type
+    long_integer = __U64_MAX__;
+    printfl("u64 max: %", long_integer);
 }
 ```
