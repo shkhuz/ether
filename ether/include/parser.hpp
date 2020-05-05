@@ -54,7 +54,7 @@ private:
 	Stmt* if_branch(Stmt* if_stmt, IfBranchType type);
 	Stmt* expr_stmt();
 
-	Stmt* struct_create(Token* identifier, Stmt** fields);
+	Stmt* struct_create(Stmt* stmt, Token* identifier, Stmt** fields, Stmt** functions);
 	Stmt* func_decl_create(Token* identifier, Stmt** params, DataType* return_data_type, Stmt** body, bool is_function, bool is_public);
 	Stmt* global_var_decl_create(Token* identifier, DataType* data_type, Expr* initializer, bool is_variable);
 	Stmt* var_decl_create(Token* identifier, DataType* data_type, Expr* initializer, bool is_variable);

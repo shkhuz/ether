@@ -88,15 +88,23 @@ init_global :: pub {
 	}
 }
 
+init_private :: {
+
+}
+
 struct System {
 	code int;
 	code2 int;
 	done bool;
 
-	init :: {
+	init :: pub {
 		this.code = 0;
 		this.code2 = 0;
 		this.done = false;
+	}
+
+	do_stuff_internally :: {
+
 	}
 }
 

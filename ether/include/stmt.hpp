@@ -24,6 +24,7 @@ struct Stmt {
 		struct {
 			Token* identifier;
 			Stmt** fields; // fields is a vector of Stmts
+			Stmt** functions;
 		} struct_stmt;
 		
 		struct {

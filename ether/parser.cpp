@@ -312,7 +312,7 @@ Stmt* Parser::decl(bool is_global) {
 			}
 
 			if (match_keyword("pub")) {
-				is_public_function = true;				
+				is_public_function = true;
 			}
 			
 			bool has_params = false;
@@ -425,12 +425,15 @@ Stmt* Parser::decl(bool is_global) {
 		}
 	}
 	else if (match_keyword("struct")) {
+		STMT_CREATE(stmt);
+		current_struct = stmt;
 		error_loc = STRUCT_HEADER;
 		CONSUME_IDENTIFIER(identifier);
 		consume_lbrace();
 
 		error_loc = STRUCT_BODY;
 		Stmt** fields = null;
+		Stmt** functions = null;
 		while (!match_rbrace()) {
 			CURRENT_ERROR;
 			Stmt* field = struct_field();
@@ -458,11 +461,24 @@ Stmt* Parser::decl(bool is_global) {
 					continue;
 				}
 			}
-			buf_push(fields, field);
+
+			switch (field->type) {
+			case S_FUNC_DECL:
+				buf_push(functions, field);
+				break;
+			case S_VAR_DECL:
+				buf_push(fields, field);
+				break;
+			default:
+				break;
+			}
 		}
-		
-		return struct_create(identifier,
-							 fields);
+
+		current_struct = null;
+		return struct_create(stmt,
+							 identifier,
+							 fields,
+							 functions);
 	}
 	
 	else if (match_keyword("if") ||
@@ -510,6 +526,7 @@ Stmt* Parser::struct_field() {
 	CURRENT_ERROR;
 	Stmt* s = decl(false);
 	EXIT_ERROR null;
+	return s;
 }
 
 Stmt* Parser::stmt() {
@@ -684,17 +701,19 @@ Stmt* Parser::expr_stmt() {
 	return expr_stmt_create(e);
 }
 
-Stmt* Parser::struct_create(Token* identifier, Stmt** fields) {
-	STMT_CREATE(stmt);
+Stmt* Parser::struct_create(Stmt* stmt, Token* identifier, Stmt** fields, Stmt** functions) {
 	stmt->type = S_STRUCT;
 	stmt->struct_stmt.identifier = identifier;
 	stmt->struct_stmt.fields = fields;
-	buf_loop(fields, f) {
-		Stmt* field = fields[f];
-		if (field->type == S_FUNC_DECL) {
-			field->func_decl.struct_in = stmt;
-		}
-	}
+	stmt->struct_stmt.functions = functions;
+
+	STMT_CREATE(decl);
+	decl->type = S_STRUCT;
+	decl->struct_stmt.identifier = identifier;
+	decl->struct_stmt.fields = fields;
+	decl->struct_stmt.functions = null;
+	buf_push(decls, decl);
+	
 	return stmt;
 }
 
@@ -707,7 +726,20 @@ Stmt* Parser::func_decl_create(Token* identifier, Stmt** params, DataType* retur
 	stmt->func_decl.body = body;
 	stmt->func_decl.is_function = is_function;
 	stmt->func_decl.is_public = is_public;
-	stmt->func_decl.struct_in = null;
+	stmt->func_decl.struct_in = current_struct;
+	
+	if (is_function && is_public) {
+		STMT_CREATE(decl);
+		decl->type = S_FUNC_DECL;
+		decl->func_decl.identifier = identifier;
+		decl->func_decl.params = params;
+		decl->func_decl.return_data_type = return_data_type;
+		decl->func_decl.body = null;
+		decl->func_decl.is_function = false;
+		decl->func_decl.is_public = is_public;
+		decl->func_decl.struct_in = current_struct;
+		buf_push(decls, decl);
+	}
 	return stmt;
 }
 
