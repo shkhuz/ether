@@ -89,7 +89,9 @@ init_global :: pub {
 }
 
 init_private :: {
-
+	{
+		return q;
+	}
 }
 
 struct System {
@@ -104,7 +106,25 @@ struct System {
 	}
 
 	do_stuff_internally :: {
+		mem :: null;
+		if !mem {
+			mem = malloc(128);
+			switch mem {
+				null -> {
+					return true;
+					return;
+				}
 
+				0420433443,
+				0435466354 -> {
+					return false;
+				}
+
+				1, 2, 3, 4, 5, 6, 7 -> {
+					return "yes";
+				}
+			}
+		}
 	}
 }
 

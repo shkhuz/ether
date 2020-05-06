@@ -11,12 +11,15 @@ enum StmtType {
 	S_VAR_DECL,
 	S_IF,
 	S_FOR,
+	S_SWITCH,
 	S_RETURN,
 	S_EXPR_STMT,
+	S_BLOCK,
 };
 
 struct Expr;
 struct IfBranch;
+struct SwitchBranch;
 
 struct Stmt {
 	StmtType type;
@@ -58,11 +61,17 @@ struct Stmt {
 		} for_stmt;
 
 		struct {
+			Expr* cond;
+			SwitchBranch** branches;
+		} switch_stmt;
+
+		struct {
 			Expr* to_return;
 			Stmt* function_refed;
 		} return_stmt;
 		
 		Expr* expr_stmt;
+		Stmt** block;
 	};
 };
 
@@ -75,4 +84,9 @@ enum IfBranchType {
 	IF_IF_BRANCH,
 	IF_ELIF_BRANCH,
 	IF_ELSE_BRANCH,
+};
+
+struct SwitchBranch {
+	Expr** conds;
+	Stmt* stmt;
 };

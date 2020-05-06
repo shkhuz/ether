@@ -21,6 +21,8 @@ enum ParserErrorLocation {
 	IF_BODY,
 	FOR_HEADER,
 	FOR_BODY,
+	SWITCH_HEADER,
+	SWITCH_BRANCH,
 	GLOBAL,
 };
 
@@ -52,14 +54,16 @@ private:
 	Stmt* struct_field();
 	Stmt* stmt();
 	Stmt* if_branch(Stmt* if_stmt, IfBranchType type);
+	Stmt* switch_branch(Stmt* switch_stmt);
 	Stmt* expr_stmt();
 
-	Stmt* struct_create(Stmt* stmt, Token* identifier, Stmt** fields, Stmt** functions);
+	Stmt* struct_create(Stmt* stmt, Token* identifier, Stmt** fields);
 	Stmt* func_decl_create(Token* identifier, Stmt** params, DataType* return_data_type, Stmt** body, bool is_function, bool is_public);
 	Stmt* global_var_decl_create(Token* identifier, DataType* data_type, Expr* initializer, bool is_variable);
 	Stmt* var_decl_create(Token* identifier, DataType* data_type, Expr* initializer, bool is_variable);
 	Stmt* for_stmt_create(Token* counter, Expr* counter_initializer, Expr* end, Stmt** body);
 	Stmt* return_stmt_create(Expr* to_return);
+	Stmt* block_create(Stmt** block);
 	Stmt* expr_stmt_create(Expr* expr);
 
 	Expr* expr();
@@ -81,13 +85,14 @@ private:
 	Expr* binary_create(Expr* left, Expr* right, Token* op);
 	Expr* unary_create(Token* op, Expr* right);
 	Expr* cast_create(Token* start, DataType* cast_to, Expr* right);
-	Expr* func_call_create(Expr* left, std::vector<Expr*>* args);
+	Expr* func_call_create(Expr* left, Expr** args);
 	Expr* array_access_create(Expr* left, Expr* index, Token* end);
 	Expr* member_access_create(Expr* left, Token* right);
 	Expr* variable_ref_create(Token* identifier);
 	Expr* number_create(Token* number);
 	Expr* string_create(Token* string);
 	Expr* char_create(Token* chr);
+	Expr* constant_create(Token* constant);
 	
 	bool match_identifier();
 	bool match_keyword(char* keyword);

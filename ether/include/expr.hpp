@@ -14,6 +14,7 @@ enum ExprType {
 	E_NUMBER,
 	E_STRING,
 	E_CHAR,
+	E_CONSTANT,
 };
 
 struct SourceFile;
@@ -33,7 +34,7 @@ struct Expr {
 
 		struct {
 			Expr* left;
-			std::vector<Expr*>* args;
+			Expr** args;
 			Stmt* function_called;
 		} func_call;
 
@@ -66,6 +67,7 @@ struct Expr {
 		Token* number;
 		Token* string;
 		Token* chr;
+		Token* constant;
 	};
 };
 

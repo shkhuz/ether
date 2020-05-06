@@ -75,9 +75,20 @@ LexerOutput Lexer::lex(SourceFile* _srcfile) {
 			}
 		} break;
 
+		case '-': {
+			if (match('=')) {
+				add(T_MINUS_EQUAL); 
+			}
+			else if (match('>')) {
+				add(T_ARROW);
+			}
+			else {
+				add(T_MINUS);
+			}
+		} break;
+
 		case ':':	match(':') ? add(T_DOUBLE_COLON) :   add(T_COLON); break;
 		case '+':	match('=') ? add(T_PLUS_EQUAL)   :   add(T_PLUS); break;
-		case '-':	match('=') ? add(T_MINUS_EQUAL)	 :   add(T_MINUS); break;
 		case '*':	match('=') ? add(T_ASTERISK_EQUAL) : add(T_ASTERISK); break;
 		case '/':	match('=') ? add(T_SLASH_EQUAL) :    add(T_SLASH); break;
 		case '%': 	match('=') ? add(T_PERCENT_EQUAL) :  add(T_PERCENT); break;

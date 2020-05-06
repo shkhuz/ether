@@ -110,6 +110,10 @@
 		EXIT_ERROR null;						\
 	}
 
+#define EXPR_REC(name)							\
+	Expr* name = expr();						\
+	RECOVER;
+
 /* no declaration, recover */
 #define EXPR_ND_REC(name)						\
 	name = expr();								\
@@ -433,7 +437,6 @@ Stmt* Parser::decl(bool is_global) {
 
 		error_loc = STRUCT_BODY;
 		Stmt** fields = null;
-		Stmt** functions = null;
 		while (!match_rbrace()) {
 			CURRENT_ERROR;
 			Stmt* field = struct_field();
@@ -464,7 +467,7 @@ Stmt* Parser::decl(bool is_global) {
 
 			switch (field->type) {
 			case S_FUNC_DECL:
-				buf_push(functions, field);
+				buf_push(stmts, field);
 				break;
 			case S_VAR_DECL:
 				buf_push(fields, field);
@@ -477,8 +480,7 @@ Stmt* Parser::decl(bool is_global) {
 		current_struct = null;
 		return struct_create(stmt,
 							 identifier,
-							 fields,
-							 functions);
+							 fields);
 	}
 	
 	else if (match_keyword("if") ||
@@ -501,6 +503,14 @@ Stmt* Parser::decl(bool is_global) {
 
 	else if (match_keyword("for")) {
 		error_loc = FOR_HEADER;
+		goto_previous_token();
+		error("for statement requires function scope;");
+		RECOVER;
+		return null;
+	}
+
+	else if (match_keyword("switch")) {
+		error_loc = SWITCH_HEADER;
 		goto_previous_token();
 		error("for statement requires function scope;");
 		RECOVER;
@@ -636,6 +646,32 @@ Stmt* Parser::stmt() {
 							   body);
 	}
 
+	else if (match_keyword("switch")) {
+		STMT_CREATE(stmt);
+		stmt->type = S_SWITCH;
+		error_loc = SWITCH_HEADER;
+
+		Expr* cond = null;
+		{
+			CURRENT_ERROR;
+			EXPR_ND_REC(cond);
+			EXIT_ERROR null;
+		}
+		stmt->switch_stmt.cond = cond;
+
+		CONSUME_LBRACE_REC;
+		error_loc = SWITCH_BRANCH;
+		while (!match_rbrace()) {
+			switch_branch(stmt);
+			CHECK_EOF(null);
+			CURRENT_ERROR;
+			RECOVER;
+			CONTINUE_ERROR;
+		}
+
+		return stmt;
+	}
+
 	else if (match_keyword("return")) {
 		Expr* to_return = null;
 		if (!match_semicolon()) {
@@ -655,6 +691,20 @@ Stmt* Parser::stmt() {
 		return null;
 	}
 	
+	else if (match_lbrace()) {
+		Stmt** block = null;
+		error_loc = FOR_BODY;
+		while (!match_rbrace()) {
+			STMT_CON(s);
+			if (s) {
+				buf_push(block, s);
+			}
+			CHECK_EOF(null);		
+		}
+
+		return block_create(block);
+	}
+
 	return expr_stmt();
 }
 
@@ -695,23 +745,48 @@ Stmt* Parser::if_branch(Stmt* if_stmt, IfBranchType type) {
 	return if_stmt;
 }
 
+Stmt* Parser::switch_branch(Stmt* switch_stmt) {
+	error_loc = SWITCH_BRANCH;
+	Expr** conds = null;
+	do {
+		CURRENT_ERROR;
+		EXPR_REC(cond);
+		EXIT_ERROR null;
+		buf_push(conds, cond);
+	} while(match_by_type(T_COMMA));
+
+	if (!match_by_type(T_ARROW)) {
+		error("expect ‘->’;");
+		return null;
+	}
+	
+	CURRENT_ERROR;
+	Stmt* s = stmt();
+	EXIT_ERROR null;
+
+	SwitchBranch* switch_branch = new SwitchBranch;
+	switch_branch->conds = conds;
+	switch_branch->stmt = s;
+
+	buf_push(switch_stmt->switch_stmt.branches, switch_branch);
+	return switch_stmt;
+}
+
 Stmt* Parser::expr_stmt() {
 	EXPR(e);
 	CONSUME_SEMICOLON;
 	return expr_stmt_create(e);
 }
 
-Stmt* Parser::struct_create(Stmt* stmt, Token* identifier, Stmt** fields, Stmt** functions) {
+Stmt* Parser::struct_create(Stmt* stmt, Token* identifier, Stmt** fields) {
 	stmt->type = S_STRUCT;
 	stmt->struct_stmt.identifier = identifier;
 	stmt->struct_stmt.fields = fields;
-	stmt->struct_stmt.functions = functions;
 
 	STMT_CREATE(decl);
 	decl->type = S_STRUCT;
 	decl->struct_stmt.identifier = identifier;
 	decl->struct_stmt.fields = fields;
-	decl->struct_stmt.functions = null;
 	buf_push(decls, decl);
 	
 	return stmt;
@@ -788,6 +863,13 @@ Stmt* Parser::return_stmt_create(Expr* to_return) {
 	STMT_CREATE(stmt);
 	stmt->type = S_RETURN;
 	stmt->return_stmt.to_return = to_return;
+	return stmt;
+}
+
+Stmt* Parser::block_create(Stmt** block) {
+	STMT_CREATE(stmt);
+	stmt->type = S_BLOCK;
+	stmt->block = block;
 	return stmt;
 }
 
@@ -967,17 +1049,12 @@ Expr* Parser::expr_precedence_1() {
 				error_expr(left, "invalid operand to call expression; ");
 				return null;
 			}
-			std::vector<Expr*>* args = null;
-			bool args_buffer_initialized = false;
+
+			Expr** args = null;
 			if (!match_rparen()) {
 				do {
-					if (!args_buffer_initialized) {
-						args = new std::vector<Expr*>();
-						args_buffer_initialized = true;
-					}
-
 					EXPR_CI(arg, expr);	
-					args->push_back(arg);
+					buf_push(args, arg);
 					CHECK_EOF(null);
 				} while (match_by_type(T_COMMA));
 				consume_rparen();
@@ -1013,6 +1090,11 @@ Expr* Parser::expr_precedence_0() {
 	}
 	else if (match_by_type(T_CHAR)) {
 		return char_create(previous());
+	}
+	else if (match_keyword("true") ||
+			 match_keyword("false") ||
+			 match_keyword("null")) {
+		return constant_create(previous());
 	}
 	else if (current()->type == T_LPAREN) {
 		return expr_grouping();
@@ -1064,7 +1146,7 @@ Expr* Parser::cast_create(Token* start, DataType* cast_to, Expr* right) {
 	return expr;
 }
 
-Expr* Parser::func_call_create(Expr* left, std::vector<Expr*>* args) {
+Expr* Parser::func_call_create(Expr* left, Expr** args) {
 	EXPR_CREATE(expr);
 	expr->type = E_FUNC_CALL;
 	expr->head = left->head;
@@ -1072,7 +1154,7 @@ Expr* Parser::func_call_create(Expr* left, std::vector<Expr*>* args) {
 		expr->tail = left->tail;
 	}
 	else {
-		expr->tail = args->at(args->size()-1)->tail;
+		expr->tail = buf_last(args)->tail;
 	}
 	expr->func_call.left = left;
 	expr->func_call.args = args;
@@ -1132,6 +1214,15 @@ Expr* Parser::char_create(Token* chr) {
 	expr->head = chr;
 	expr->tail = chr;
 	expr->chr = chr;
+	return expr;
+}
+
+Expr* Parser::constant_create(Token* constant) {
+	EXPR_CREATE(expr);
+	expr->type = E_CONSTANT;
+	expr->head = constant;
+	expr->tail = constant;
+	expr->constant = constant;
 	return expr;
 }
 
@@ -1504,6 +1595,8 @@ void Parser::sync_to_next_statement() {
 	case FUNCTION_HEADER:
 	case IF_HEADER:
 	case FOR_HEADER:
+	case SWITCH_HEADER:
+	case SWITCH_BRANCH:
 		if (current()->type == T_LBRACE) {
 			if (!error_lbrace_parsed) {
 				error_lbrace_parsed = true;

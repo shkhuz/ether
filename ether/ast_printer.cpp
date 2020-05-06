@@ -12,7 +12,9 @@ void AstPrinter::print(Stmt** _stmts) {
 }
 
 void AstPrinter::print_stmt(Stmt* stmt) {
-	pre_stmt();
+	if (stmt->type != S_BLOCK) {
+		pre_stmt();
+	}
 	switch (stmt->type) {
 	case S_STRUCT:
 		print_struct_stmt(stmt);
@@ -29,8 +31,14 @@ void AstPrinter::print_stmt(Stmt* stmt) {
 	case S_FOR:
 		print_for_stmt(stmt);
 		break;
+	case S_SWITCH:
+		print_switch_stmt(stmt);
+		break;
 	case S_RETURN:
 		print_return_stmt(stmt);
+		break;
+	case S_BLOCK:
+		print_block(stmt);
 		break;
 	case S_EXPR_STMT:
 		print_expr_stmt(stmt);
@@ -203,10 +211,43 @@ void AstPrinter::print_for_stmt(Stmt* stmt) {
 	tab_count--;
 }
 
+void AstPrinter::print_switch_stmt(Stmt* stmt) {
+	print_string("SWITCH ");
+	print_expr(stmt->switch_stmt.cond);
+	print_newline();
+
+	tab_count++;
+	buf_loop(stmt->switch_stmt.branches, b) {
+		print_switch_branch(stmt->switch_stmt.branches[b]);
+	}
+	tab_count--;
+}
+
+void AstPrinter::print_switch_branch(SwitchBranch* branch) {
+	pre_stmt();
+	buf_loop(branch->conds, c) {
+		print_expr(branch->conds[c]);
+		if (c != buf_len(branch->conds)-1) {
+			print_string(", ");
+		}
+	}
+	print_string(" -> ");
+	print_newline();
+	tab_count++;
+	print_stmt(branch->stmt);
+	tab_count--;
+}
+
 void AstPrinter::print_return_stmt(Stmt* stmt) {
 	print_string("RETURN ");
 	if (stmt->return_stmt.to_return) {
 		print_expr(stmt->return_stmt.to_return);
+	}
+}
+
+void AstPrinter::print_block(Stmt* stmt) {
+	buf_loop(stmt->block, i) {
+		print_stmt(stmt->block[i]);
 	}
 }
 
@@ -247,6 +288,9 @@ void AstPrinter::print_expr(Expr* expr) {
 	case E_CHAR:
 		print_char(expr);
 		break;
+	case E_CONSTANT:
+		print_token(expr->constant);
+		break;
 	}
 }
 
@@ -280,10 +324,10 @@ void AstPrinter::print_func_call(Expr* expr) {
 	print_lparen();
 	if (expr->func_call.args) {
 		auto args = expr->func_call.args;
-		for (u64 i = 0; i < args->size(); ++i) {
-			Expr* arg = args->at(i);
+		buf_loop(args, i) {
+			Expr* arg = args[i];
 			print_expr(arg);
-			if (i != args->size()-1) {
+			if (i != buf_len(args)-1) {
 				print_string(", ");
 			}
 		}

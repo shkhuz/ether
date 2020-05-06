@@ -9,6 +9,11 @@ char* keywords[KEYWORDS_LEN] = {
 	"elif",
 	"else",
 	"for",
+	"switch",
 	"return",
 	"cast",
+	"true",
+	"false",
+	"null",
 };
+
