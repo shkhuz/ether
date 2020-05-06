@@ -1,6 +1,8 @@
 #include <ether.hpp>
 #include <compiler.hpp>
 
+#include <string>
+
 char* invoker_compiler = null;
 
 void ether_abort_no_args() {
@@ -8,15 +10,29 @@ void ether_abort_no_args() {
 	exit(EXIT_FAILURE);
 }
 
-void ether_abort(const char* fmt, ...) {
+void ether_print_error_va(const char* fmt, va_list ap) {
+	va_list aq;
+	va_copy(aq, ap);
 	fprintf(stderr, "%s: ", invoker_compiler);
 
+	vfprintf(stderr, fmt, aq);
+	fprintf(stderr, "\n");
+	va_end(aq);
+}
+
+void ether_print_error(const char* fmt, ...) {
 	va_list ap;
 	va_start(ap, fmt);
-	vfprintf(stderr, fmt, ap);
-	fprintf(stderr, "\n");
+	ether_print_error_va(fmt, ap);
 	va_end(ap);
+}
 
+void ether_abort(const char* fmt, ...) {
+	va_list ap;
+	va_start(ap, fmt);
+	ether_print_error_va(fmt, ap);
+	va_end(ap);
+	
 	ether_abort_no_args();
 }
 
@@ -76,11 +92,11 @@ int main(int argc, char** argv) {
 	}
 
 	if (source_files == null) {
-		ether_abort("no files specified; consider adding a ‘main.eth’ source file");
+		ether_abort("no files supplied;");
 	}
 
-	buf_loop(source_files, i) {
+	buf_loop(source_files, i) {		
 		Compiler compiler;
-		compiler.compile(source_files[i], "out");
+		compiler.compile(source_files[i]);
 	}
 }

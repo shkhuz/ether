@@ -4,10 +4,18 @@
 #include <token.hpp>
 #include <parser.hpp>
 #include <ast_printer.hpp>
+#include <code_gen.hpp>
 
 static FileDecl* file_decls = null;
 
-Stmt** Compiler::compile(const char* in_file, const char* out_file) {
+Stmt** Compiler::compile(const char* in_file) {
+	std::string current_file = std::string(in_file);
+	if (!match_extension(current_file, "eth")) {
+		ether_abort("%s: invalid source file extension;", in_file);
+	}
+
+	char* obj_fpath = change_extension(current_file, "o");
+	
 	buf_loop(file_decls, f) {
 		if (str_intern(file_decls[f].fpath) ==
 			str_intern(const_cast<char*>(in_file))) {
@@ -46,11 +54,14 @@ Stmt** Compiler::compile(const char* in_file, const char* out_file) {
 		ether_abort_no_args();
 	}
 	buf_push(file_decls, (FileDecl){ const_cast<char*>(in_file),
-									 parser_output.decls });
+				parser_output.decls});
 	parser.add_pending_imports();
 
 	AstPrinter ast_printer;
 	ast_printer.print(parser_output.stmts);
+
+	CodeGenerator code_generator;
+	code_generator.generate(parser_output.stmts, const_cast<char*>(obj_fpath));
 
 	return parser_output.decls;
 }

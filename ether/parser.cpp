@@ -212,7 +212,7 @@ Stmt* Parser::decl_global() {
 														   last_slash :
 														   last_slash + 1));
 			current_dir.append(fpath_rel_file);
-			printf("FILE: %s\n", current_dir.c_str());
+			/* printf("FILE: %s\n", current_dir.c_str()); */
 			if (!file_exists(current_dir.c_str())) {
 				error_token(fpath_token,
 							"cannot find file; ");
@@ -1622,7 +1622,7 @@ void Parser::sync_to_next_statement() {
 void Parser::add_pending_imports() {
 	buf_loop(pending_imports, i) {
 		Compiler compiler;
-		Stmt** target_decls = compiler.compile(pending_imports[i], "out");
+		Stmt** target_decls = compiler.compile(pending_imports[i]);
 		
 		buf_loop(target_decls, d) {
 			buf_push(stmts, target_decls[d]);	

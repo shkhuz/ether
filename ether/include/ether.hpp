@@ -13,15 +13,12 @@
 #include <ctype.h>
 #include <unistd.h>
 
-#include <typedef.hpp>
+#include <common.hpp>
 #include <ds.hpp>
-#include <io.hpp>
 #include <error.hpp>
+#include <io.hpp>
 #include <str_intern.hpp>
-
-#define true 1
-#define false 0
-#define null NULL
+#include <typedef.hpp>
 
 #define ETHER_SUCCESS 0
 #define ETHER_ERROR 1

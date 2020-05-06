@@ -20,3 +20,7 @@ typedef float f32;
 typedef double f64;
 
 typedef int error_code;
+
+#define true 1
+#define false 0
+#define null NULL

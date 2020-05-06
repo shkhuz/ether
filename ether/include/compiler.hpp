@@ -3,7 +3,7 @@
 struct Stmt;
 
 struct Compiler {
-	Stmt** compile(const char* in_file, const char* out_file);
+	Stmt** compile(const char* in_file);
 };
 
 struct FileDecl {
