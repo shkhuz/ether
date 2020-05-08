@@ -131,11 +131,10 @@ private:
 	void goto_next_token();
 	void goto_previous_token();
 
-	void error_root(u64 line, u64 column, u64 char_count, const char* fmt, va_list ap);
 	void verror(const char* fmt, va_list ap);
 	void error(const char* fmt, ...);
-	void error_expr(Expr* expr, const char* fmt, ...);
-	void error_data_type(DataType* data_type, const char* fmt, ...);
-	void error_token(Token* token, const char* fmt, ...);
 	void sync_to_next_statement();
+
+public:
+	void error_root(SourceFile* _srcfile, u64 line, u64 column, u64 char_count, const char* fmt, va_list ap);
 }; 

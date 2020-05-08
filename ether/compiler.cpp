@@ -4,6 +4,7 @@
 #include <token.hpp>
 #include <parser.hpp>
 #include <ast_printer.hpp>
+#include <linker.hpp>
 #include <code_gen.hpp>
 
 static FileDecl* file_decls = null;
@@ -60,8 +61,14 @@ Stmt** Compiler::compile(const char* in_file) {
 	AstPrinter ast_printer;
 	ast_printer.print(parser_output.stmts);
 
-	CodeGenerator code_generator;
-	code_generator.generate(parser_output.stmts, const_cast<char*>(obj_fpath));
+	Linker linker;
+	error_code linker_error_code = linker.link(parser_output.stmts);
+	if (linker_error_code == ETHER_ERROR) {
+		ether_abort_no_args();
+	}
+	
+	//CodeGenerator code_generator;
+	//code_generator.generate(parser_output.stmts, const_cast<char*>(obj_fpath));
 
 	return parser_output.decls;
 }

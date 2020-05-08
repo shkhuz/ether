@@ -13,3 +13,11 @@ Token* token_create(char* lexeme, char* start, char* end, TokenType type, Source
 	token->char_count = char_count;
 	return token;
 }
+
+bool is_token_equal(Token* a, Token* b) {
+	if (str_intern(a->lexeme) ==
+		str_intern(b->lexeme)) {
+		return true;	
+	}
+	return false;
+}

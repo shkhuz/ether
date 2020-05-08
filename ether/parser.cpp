@@ -148,6 +148,10 @@
 		sync_to_next_statement();				\
 	} 
 
+#define error_expr(e, fmt, ...) error_expr(this, e, fmt, ##__VA_ARGS__)
+#define error_data_type(d, fmt, ...) error_data_type(this, d, fmt, ##__VA_ARGS__)
+#define error_token(t, fmt, ...) error_token(this, t, fmt, ##__VA_ARGS__)
+
 #define STMT_CREATE(name) Stmt* name = new Stmt; 
 
 ParserOutput Parser::parse(Token** _tokens, SourceFile* _srcfile) {
@@ -1501,7 +1505,7 @@ void Parser::goto_previous_token() {
 	}
 }
 
-void Parser::error_root(u64 line, u64 column, u64 char_count, const char* fmt, va_list ap) {
+void Parser::error_root(SourceFile* _srcfile, u64 line, u64 column, u64 char_count, const char* fmt, va_list ap) {
 	if (error_panic) {
 		error_count++;		
 		sync_to_next_statement();
@@ -1510,7 +1514,7 @@ void Parser::error_root(u64 line, u64 column, u64 char_count, const char* fmt, v
 	error_panic = true;
 	
 	print_error_at(
-		srcfile,
+		_srcfile,
 		line,
 		column,
 		char_count,
@@ -1524,6 +1528,7 @@ void Parser::verror(const char* fmt, va_list ap) {
 	va_list aq;
 	va_copy(aq, ap);
 	error_root(
+		srcfile,
 		current()->line,
 		current()->column,
 		current()->char_count,
@@ -1537,43 +1542,6 @@ void Parser::error(const char* fmt, ...) {
 	va_start(ap, fmt);
 	verror(fmt, ap);
 	va_end(ap);
-}
-
-void Parser::error_expr(Expr* expr, const char* fmt, ...) {
-	u64 char_count = get_expr_char_count(expr);
-	va_list ap;
-	va_start(ap, fmt);
-	error_root(expr->head->line,
-			   expr->head->column,
-			   char_count,
-			   fmt,
-			   ap);
-	va_end(ap);
-}
-
-void Parser::error_data_type(DataType* data_type, const char* fmt, ...) {
-	assert(data_type);
-	u64 char_count = data_type->identifier->end - data_type->start->start;
-	va_list ap;
-	va_start(ap, fmt);
-	error_root(data_type->identifier->line,
-			   data_type->identifier->column,
-			   char_count,
-			   fmt,
-			   ap);
-	va_end(ap);
-}
-
-void Parser::error_token(Token* token, const char* fmt, ...) {
-	u64 char_count = token->end - token->start;
-	va_list ap;
-	va_start(ap, fmt);
-	error_root(token->line,
-			   token->column,
-			   char_count,
-			   fmt,
-			   ap);
-	va_end(ap);	
 }
 
 void Parser::sync_to_next_statement() {

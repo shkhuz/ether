@@ -2,6 +2,10 @@
 
 global :: 123;
 
+struct System {
+
+}
+
 main :: pub (argc hello, argv infd) {
 	array [100]int;
 	array[0] = 12;

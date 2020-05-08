@@ -1,5 +1,7 @@
 #pragma once
 
+#include <typedef.hpp>
+
 enum TokenType {
 	T_IDENTIFIER,
 	T_KEYWORD,
@@ -59,6 +61,8 @@ enum TokenType {
 	T_EOF,
 };
 
+struct SourceFile;
+
 struct Token {
 	char* lexeme;
 	char* start;
@@ -71,3 +75,4 @@ struct Token {
 }; 
 
 Token* token_create(char* lexeme, char* start, char* end, TokenType type, SourceFile* file, u64 line, u64 column, u64 char_count);
+bool is_token_equal(Token* a, Token* b);
