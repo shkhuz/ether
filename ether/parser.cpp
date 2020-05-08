@@ -166,6 +166,7 @@ ParserOutput Parser::parse(Token** _tokens, SourceFile* _srcfile) {
 	
 	error_count = 0;
 	error_panic = false;
+	dont_sync = false;
 	error_loc = GLOBAL;
 	error_brace_count = 0;
 	error_lbrace_parsed = false;
@@ -199,11 +200,10 @@ Stmt* Parser::decl_global() {
 		if (match_keyword("import")) {
 			if (!match_by_type(T_STRING)) {
 				error("expect compile-time string literal;");
-				RECOVER;
+				goto_next_token();
 				return null;
 			}
 			Token* fpath_token = previous();
-			CONSUME_SEMICOLON;
 
 			std::string fpath_rel_file = std::string(fpath_token->lexeme);
 			std::string current_file = std::string(srcfile->fpath);
@@ -218,8 +218,11 @@ Stmt* Parser::decl_global() {
 			current_dir.append(fpath_rel_file);
 			/* printf("FILE: %s\n", current_dir.c_str()); */
 			if (!file_exists(current_dir.c_str())) {
+				dont_sync = true;
 				error_token(fpath_token,
 							"cannot find file; ");
+				dont_sync = false;
+				error_panic = false;
 				return null;
 			}
 
@@ -229,7 +232,6 @@ Stmt* Parser::decl_global() {
 		}
 		else {
 			error("expect directive;");
-			RECOVER;
 			return null;
 		}
 	}
@@ -808,16 +810,20 @@ Stmt* Parser::func_decl_create(Token* identifier, Stmt** params, DataType* retur
 	stmt->func_decl.struct_in = current_struct;
 	
 	if (is_function && is_public) {
-		STMT_CREATE(decl);
-		decl->type = S_FUNC_DECL;
-		decl->func_decl.identifier = identifier;
-		decl->func_decl.params = params;
-		decl->func_decl.return_data_type = return_data_type;
-		decl->func_decl.body = null;
-		decl->func_decl.is_function = false;
-		decl->func_decl.is_public = is_public;
-		decl->func_decl.struct_in = current_struct;
-		buf_push(decls, decl);
+		if (!current_struct && str_intern(identifier->lexeme) == str_intern("main")) {
+		}
+		else {
+			STMT_CREATE(decl);
+			decl->type = S_FUNC_DECL;
+			decl->func_decl.identifier = identifier;
+			decl->func_decl.params = params;
+			decl->func_decl.return_data_type = return_data_type;
+			decl->func_decl.body = null;
+			decl->func_decl.is_function = false;
+			decl->func_decl.is_public = is_public;
+			decl->func_decl.struct_in = current_struct;
+			buf_push(decls, decl);
+		}
 	}
 	return stmt;
 }
@@ -1520,7 +1526,9 @@ void Parser::error_root(SourceFile* _srcfile, u64 line, u64 column, u64 char_cou
 		char_count,
 		fmt,
 		ap);
-	sync_to_next_statement();
+	if (!dont_sync) {
+		sync_to_next_statement();
+	}
 	error_count++;		
 }
 

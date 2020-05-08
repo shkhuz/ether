@@ -38,6 +38,7 @@ struct Parser {
 
 	u64 error_count;
 	bool error_panic;
+	bool dont_sync;
 	ParserErrorLocation error_loc;
 	u64 error_brace_count;
 	bool error_lbrace_parsed = false;

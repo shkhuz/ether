@@ -1,0 +1,14 @@
+#import "ether2.eth"
+
+struct System {
+	init :: {
+
+	}
+	
+	init :: {
+
+	}
+}
+
+global :: 1;
+global :: 2;

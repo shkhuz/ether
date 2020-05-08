@@ -1,6 +1,12 @@
-#import "ether.eth";
+#import "ether.eth"
 
-main :: {
+main :: pub {
 	ether Ether;
 	ether.init();
+}
+
+struct Any {
+	main :: pub {
+
+	}
 }
