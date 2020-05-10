@@ -25,6 +25,7 @@
 
 #define TAB_SIZE 4
 #define KEYWORDS_LEN 14
+#define BUILT_IN_TYPES_LEN 3
 
 #define PRINT_TOKEN 0
 
@@ -32,3 +33,4 @@ void ether_abort(const char* fmt, ...);
 void ether_abort_no_args();
 
 extern char* keywords[KEYWORDS_LEN];
+extern char* built_in_types[BUILT_IN_TYPES_LEN];

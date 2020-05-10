@@ -1,14 +1,17 @@
-#import "ether2.eth"
 
 struct System {
 	init :: {
-
-	}
-	
-	init :: {
-
+		n;
 	}
 }
 
-global :: 1;
-global :: 2;
+init :: (argc int) System {
+	var :: 12;
+	var :: 12;
+}
+
+argc :: 2;
+
+struct int {
+
+}

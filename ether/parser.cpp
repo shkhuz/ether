@@ -148,10 +148,6 @@
 		sync_to_next_statement();				\
 	} 
 
-#define error_expr(e, fmt, ...) error_expr(this, e, fmt, ##__VA_ARGS__)
-#define error_data_type(d, fmt, ...) error_data_type(this, d, fmt, ##__VA_ARGS__)
-#define error_token(t, fmt, ...) error_token(this, t, fmt, ##__VA_ARGS__)
-
 #define STMT_CREATE(name) Stmt* name = new Stmt; 
 
 ParserOutput Parser::parse(Token** _tokens, SourceFile* _srcfile) {
@@ -1530,6 +1526,16 @@ void Parser::error_root(SourceFile* _srcfile, u64 line, u64 column, u64 char_cou
 		sync_to_next_statement();
 	}
 	error_count++;		
+}
+
+void Parser::warning_root(SourceFile* _srcfile, u64 line, u64 column, u64 char_count, const char* fmt, va_list ap) {
+	print_warning_at(
+		_srcfile,
+		line,
+		column,
+		char_count,
+		fmt,
+		ap);
 }
 
 void Parser::verror(const char* fmt, va_list ap) {

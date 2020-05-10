@@ -138,4 +138,5 @@ private:
 
 public:
 	void error_root(SourceFile* _srcfile, u64 line, u64 column, u64 char_count, const char* fmt, va_list ap);
+	void warning_root(SourceFile* _srcfile, u64 line, u64 column, u64 char_count, const char* fmt, va_list ap);
 }; 
