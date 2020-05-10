@@ -60,6 +60,7 @@ main :: pub (argc hello, argv infd) {
 	for i = 23 .. 2 + 4 {
 		puts("iteration: ");
 		putn(i);
+		wewe  = 12;
 	}
 
 	var :: get_var();
@@ -112,8 +113,10 @@ struct System {
 				}
 
 				0420433443,
-				0435466354 -> {
+				ssd = 12 -> {
 					return false;
+					ssd = 12;
+					sqsq we;
 				}
 
 				1, 2, 3, 4, 5, 6, 7 -> {

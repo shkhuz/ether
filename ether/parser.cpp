@@ -613,14 +613,15 @@ Stmt* Parser::stmt() {
 
 	else if (match_keyword("for")) {
 		error_loc = FOR_HEADER;
-		Token* counter = null;
-		Expr* counter_initializer = null;
+		STMT_CREATE(counter);
+		counter->type = S_VAR_DECL;
+		counter->var_decl.is_variable = true;
 		Expr* end = null;
 		if (match_identifier()) {
-			counter = previous();
+			counter->var_decl.identifier = previous();
 
 			if (match_by_type(T_EQUAL)) {
-				EXPR_ND_REC(counter_initializer);
+				EXPR_ND_REC(counter->var_decl.initializer);
 			}
 			
 			if (!match_by_type(T_DOT_DOT)) {
@@ -643,7 +644,6 @@ Stmt* Parser::stmt() {
 		}
 
 		return for_stmt_create(counter,
-							   counter_initializer,
 							   end,
 							   body);
 	}
@@ -855,11 +855,10 @@ Stmt* Parser::var_decl_create(Token* identifier, DataType* data_type, Expr* init
 	return stmt;
 }
 
-Stmt* Parser::for_stmt_create(Token* counter, Expr* counter_initializer, Expr* end, Stmt** body) {
+Stmt* Parser::for_stmt_create(Stmt* counter, Expr* end, Stmt** body) {
 	STMT_CREATE(stmt);
 	stmt->type = S_FOR;
 	stmt->for_stmt.counter = counter;
-	stmt->for_stmt.counter_initializer = counter_initializer;
 	stmt->for_stmt.end = end;
 	stmt->for_stmt.body = body;
 	return stmt;

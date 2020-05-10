@@ -187,16 +187,9 @@ void AstPrinter::print_if_branch(IfBranch* branch, IfBranchType type) {
 void AstPrinter::print_for_stmt(Stmt* stmt) {
 	print_string("FOR ");
 	if (stmt->for_stmt.counter) {
-		print_token(stmt->for_stmt.counter);
-		print_space();
+		print_var_decl(stmt->for_stmt.counter);
 
-		if (stmt->for_stmt.counter_initializer) {
-			print_string("= ");
-			print_expr(stmt->for_stmt.counter_initializer);
-			print_space();
-		}
-
-		print_string(".. ");
+		print_string(" .. ");
 		print_expr(stmt->for_stmt.end);
 	}
 	print_newline();

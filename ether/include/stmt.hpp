@@ -54,8 +54,7 @@ struct Stmt {
 		} if_stmt;
 
 		struct {
-			Token* counter;
-			Expr* counter_initializer;
+			Stmt* counter;
 			Expr* end;
 			Stmt** body;
 		} for_stmt;

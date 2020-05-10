@@ -1,3 +1,4 @@
+#import "ether.eth"
 
 struct System {
 	init :: {
@@ -8,6 +9,12 @@ struct System {
 init :: (argc int) System {
 	var :: 12;
 	var :: 12;
+	switch mem {
+		wq -> {
+			fdf;
+			return null;
+		}
+	}
 }
 
 argc :: 2;

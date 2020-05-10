@@ -171,8 +171,23 @@ void Linker::check_stmt(Stmt* stmt) {
 			check_var_decl(stmt);
 		}
 		break;
+	case S_IF:
+		check_if_stmt(stmt);
+		break;
+	case S_FOR:
+		check_for_stmt(stmt);
+		break;
+	case S_SWITCH:
+		check_switch_stmt(stmt);
+		break;
+	case S_RETURN:
+		check_return_stmt(stmt);
+		break;
 	case S_EXPR_STMT:
 		check_expr_stmt(stmt);
+		break;
+	case S_BLOCK:
+		check_block_stmt(stmt);
 		break;
 	}
 }
@@ -180,7 +195,7 @@ void Linker::check_stmt(Stmt* stmt) {
 void Linker::check_func_decl(Stmt* stmt) {
 	CHANGE_SCOPE(scope);
 	function_in = stmt;
-	if (!stmt->func_decl.struct_in && stmt->func_decl.is_function) {
+	if (!stmt->func_decl.struct_in) {
 		buf_loop(stmt->func_decl.params, p) {
 			Stmt** params = stmt->func_decl.params;
 			VariableScope scope_in_found = is_variable_in_scope(params[p]);
@@ -196,12 +211,15 @@ void Linker::check_func_decl(Stmt* stmt) {
 			}
 			buf_push(scope->variables, params[p]);
 		}
+		
 		if (stmt->func_decl.return_data_type) {
 			check_data_type(stmt->func_decl.return_data_type);
 		}
 
-		buf_loop(stmt->func_decl.body, s) {
-			check_stmt(stmt->func_decl.body[s]);
+		if (stmt->func_decl.is_function) {
+			buf_loop(stmt->func_decl.body, s) {
+				check_stmt(stmt->func_decl.body[s]);
+			}
 		}
 	}
 	function_in = null;
@@ -209,28 +227,92 @@ void Linker::check_func_decl(Stmt* stmt) {
 }
 
 void Linker::check_var_decl(Stmt* stmt) {
-	if (stmt->var_decl.is_variable) {
-		VariableScope scope_in_found = is_variable_in_scope(stmt);
-		if (scope_in_found == VS_CURRENT_SCOPE) {
-			error_token(stmt->var_decl.identifier,
-						"redeclaration of variable ‘%s’;",
-						stmt->var_decl.identifier->lexeme);
-		}
-		else if (scope_in_found == VS_OUTER_SCOPE) {
-			warning_token(stmt->var_decl.identifier,
-						  "variable declaration shadows another variable;");
-			buf_push(current_scope->variables, stmt);
-		}
+	VariableScope scope_in_found = is_variable_in_scope(stmt);
+	if (scope_in_found == VS_CURRENT_SCOPE) {
+		error_token(stmt->var_decl.identifier,
+					"redeclaration of variable ‘%s’;",
+					stmt->var_decl.identifier->lexeme);
+	}
+	else if (scope_in_found == VS_OUTER_SCOPE) {
+		warning_token(stmt->var_decl.identifier,
+					  "variable declaration shadows another variable;");
 		buf_push(current_scope->variables, stmt);
+	}
+	buf_push(current_scope->variables, stmt);
 
-		if (stmt->var_decl.data_type) {
-			check_data_type(stmt->var_decl.data_type);
-		}
+	if (stmt->var_decl.data_type) {
+		check_data_type(stmt->var_decl.data_type);
+	}
 
+	if (stmt->var_decl.is_variable) {
 		if (stmt->var_decl.initializer) {
 			check_expr(stmt->var_decl.initializer);
 		}
-	}	
+	}
+}
+
+void Linker::check_if_stmt(Stmt* stmt) {
+	check_if_branch(stmt->if_stmt.if_branch);
+	buf_loop(stmt->if_stmt.elif_branch, b) {
+		check_if_branch(stmt->if_stmt.elif_branch[b]);
+	}
+	if (stmt->if_stmt.else_branch) {
+		check_if_branch(stmt->if_stmt.else_branch);
+	}
+}
+
+void Linker::check_if_branch(IfBranch* branch) {
+	CHANGE_SCOPE(scope);
+	if (branch->cond) {
+		check_expr(branch->cond);
+	}
+	buf_loop(branch->body, s) {
+		check_stmt(branch->body[s]);
+	}
+	REVERT_SCOPE(scope);
+}
+
+void Linker::check_for_stmt(Stmt* stmt) {
+	CHANGE_SCOPE(scope);
+	if (stmt->for_stmt.counter) {
+		check_var_decl(stmt->for_stmt.counter);
+	}
+	if (stmt->for_stmt.end) {
+		check_expr(stmt->for_stmt.end);
+	}
+
+	buf_loop(stmt->for_stmt.body, s) {
+		check_stmt(stmt->for_stmt.body[s]);
+	}
+	REVERT_SCOPE(scope);
+}
+
+void Linker::check_switch_stmt(Stmt* stmt) {
+	check_expr(stmt->switch_stmt.cond);
+	buf_loop(stmt->switch_stmt.branches, b) {
+		check_switch_branch(stmt->switch_stmt.branches[b]);
+	}
+}
+
+void Linker::check_switch_branch(SwitchBranch* branch) {
+	buf_loop(branch->conds, c) {
+		check_expr(branch->conds[c]);
+	}
+	check_stmt(branch->stmt);
+}
+
+void Linker::check_return_stmt(Stmt* stmt) {
+	check_expr(stmt->return_stmt.to_return);
+	assert(function_in);
+	stmt->return_stmt.function_refed = function_in;
+}
+
+void Linker::check_block_stmt(Stmt* stmt) {
+	CHANGE_SCOPE(scope);
+	buf_loop(stmt->block, s) {
+		check_stmt(stmt->block[s]);
+	}
+	REVERT_SCOPE(scope);
 }
 
 void Linker::check_expr_stmt(Stmt* stmt) {
@@ -283,7 +365,25 @@ void Linker::check_cast_expr(Expr* expr) {
 }
 
 void Linker::check_func_call(Expr* expr) {
-	// TODO implement
+	if (expr->func_call.left->type == E_VARIABLE_REF) {
+		buf_loop(defined_functions, f) {
+			if (is_token_equal(expr->func_call.left->variable_ref.identifier,
+							   defined_functions[f]->func_decl.identifier)) {
+				expr->func_call.function_called = defined_functions[f];
+				break;
+			}
+		}
+
+		if (!expr->func_call.function_called) {
+			error_expr(expr->func_call.left,
+					   "undefined function ‘%s’;",
+					   expr->func_call.left->variable_ref.identifier->lexeme);
+		}
+	}
+
+	buf_loop(expr->func_call.args, a) {
+		check_expr(expr->func_call.args[a]);
+	}
 }
 
 void Linker::check_array_access(Expr* expr) {

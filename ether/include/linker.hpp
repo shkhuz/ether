@@ -3,6 +3,8 @@
 #include <typedef.hpp>
 
 struct Stmt;
+struct IfBranch;
+struct SwitchBranch;
 
 struct StructFunctionMap {
 	Stmt* stmt;
@@ -45,7 +47,14 @@ private:
 	void check_stmt(Stmt* stmt);
 	void check_func_decl(Stmt* stmt);
 	void check_var_decl(Stmt* stmt);
+	void check_if_stmt(Stmt* stmt);
+	void check_if_branch(IfBranch* branch);
+	void check_for_stmt(Stmt* stmt);
+	void check_switch_stmt(Stmt* stmt);
+	void check_switch_branch(SwitchBranch* branch);
+	void check_return_stmt(Stmt* stmt);
 	void check_expr_stmt(Stmt* stmt);
+	void check_block_stmt(Stmt* stmt);
 	void check_expr(Expr* expr);
 	void check_binary_expr(Expr* expr);
 	void check_unary_expr(Expr* expr);
