@@ -1,12 +1,17 @@
-#import "ether.eth"
-
 struct System {
 	init :: {
 		n;
+		out = 12;
 	}
+
+	out int;
+	n int;
 }
 
 init :: (argc int) System {
+	sys :: get_system();
+	
+	sys.start();
 	var :: 12;
 	var :: 12;
 	switch mem {
@@ -18,6 +23,11 @@ init :: (argc int) System {
 }
 
 argc :: 2;
+
+get_system :: System {
+	sys System;
+	return sys;
+}
 
 struct int {
 

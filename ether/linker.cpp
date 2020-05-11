@@ -163,8 +163,13 @@ void Linker::check_stmts() {
 
 void Linker::check_stmt(Stmt* stmt) {
 	switch (stmt->type) {
+	case S_STRUCT:
+		check_struct(stmt);
+		break;
 	case S_FUNC_DECL:
-		check_func_decl(stmt);
+		if (!stmt->func_decl.struct_in) {
+			check_func_decl(stmt);
+		}
 		break;
 	case S_VAR_DECL:
 		if (function_in) { // global vars have already been checked
@@ -192,34 +197,56 @@ void Linker::check_stmt(Stmt* stmt) {
 	}
 }
 
+void Linker::check_struct(Stmt* stmt) {
+	CHANGE_SCOPE(scope);
+	
+	Stmt** fields = stmt->struct_stmt.fields;
+	buf_loop(fields, f) {
+		VariableScope scope_in_found = is_variable_in_scope(fields[f]);
+		if (scope_in_found == VS_CURRENT_SCOPE) {
+			error_token(fields[f]->var_decl.identifier,
+						"redeclaration of struct variable ‘%s’;",
+						fields[f]->var_decl.identifier->lexeme);
+		}
+		else if (scope_in_found == VS_OUTER_SCOPE) {
+			warning_token(fields[f]->var_decl.identifier,
+						  "variable declaration shadows another variable;");
+			buf_push(scope->variables, fields[f]);
+		}
+		buf_push(scope->variables, fields[f]);
+	}
+
+	Stmt** functions = null;
+	buf_loop(defined_structs, s) {
+		if (defined_structs[s]->stmt == stmt) {
+			functions = defined_structs[s]->functions;
+		}
+	}
+
+	buf_loop(functions, f) {
+		// struct functions are checked here because
+		// struct variables should be in scope
+		check_func_decl(functions[f]);
+	}
+	
+	REVERT_SCOPE(scope);
+}
+
 void Linker::check_func_decl(Stmt* stmt) {
 	CHANGE_SCOPE(scope);
 	function_in = stmt;
-	if (!stmt->func_decl.struct_in) {
-		buf_loop(stmt->func_decl.params, p) {
-			Stmt** params = stmt->func_decl.params;
-			VariableScope scope_in_found = is_variable_in_scope(params[p]);
-			if (scope_in_found == VS_CURRENT_SCOPE) {
-				error_token(params[p]->var_decl.identifier,
-							"redeclaration of variable ‘%s’;",
-							params[p]->var_decl.identifier->lexeme);
-			}
-			else if (scope_in_found == VS_OUTER_SCOPE) {
-				warning_token(params[p]->var_decl.identifier,
-							  "variable declaration shadows another variable;");
-				buf_push(scope->variables, params[p]);
-			}
-			buf_push(scope->variables, params[p]);
-		}
+	buf_loop(stmt->func_decl.params, p) {
+		Stmt** params = stmt->func_decl.params;
+		add_variable_to_scope(params[p]);
+	}
 		
-		if (stmt->func_decl.return_data_type) {
-			check_data_type(stmt->func_decl.return_data_type);
-		}
+	if (stmt->func_decl.return_data_type) {
+		check_data_type(stmt->func_decl.return_data_type);
+	}
 
-		if (stmt->func_decl.is_function) {
-			buf_loop(stmt->func_decl.body, s) {
-				check_stmt(stmt->func_decl.body[s]);
-			}
+	if (stmt->func_decl.is_function) {
+		buf_loop(stmt->func_decl.body, s) {
+			check_stmt(stmt->func_decl.body[s]);
 		}
 	}
 	function_in = null;
@@ -227,18 +254,7 @@ void Linker::check_func_decl(Stmt* stmt) {
 }
 
 void Linker::check_var_decl(Stmt* stmt) {
-	VariableScope scope_in_found = is_variable_in_scope(stmt);
-	if (scope_in_found == VS_CURRENT_SCOPE) {
-		error_token(stmt->var_decl.identifier,
-					"redeclaration of variable ‘%s’;",
-					stmt->var_decl.identifier->lexeme);
-	}
-	else if (scope_in_found == VS_OUTER_SCOPE) {
-		warning_token(stmt->var_decl.identifier,
-					  "variable declaration shadows another variable;");
-		buf_push(current_scope->variables, stmt);
-	}
-	buf_push(current_scope->variables, stmt);
+	add_variable_to_scope(stmt);
 
 	if (stmt->var_decl.data_type) {
 		check_data_type(stmt->var_decl.data_type);
@@ -302,7 +318,9 @@ void Linker::check_switch_branch(SwitchBranch* branch) {
 }
 
 void Linker::check_return_stmt(Stmt* stmt) {
-	check_expr(stmt->return_stmt.to_return);
+	if (stmt->return_stmt.to_return) {
+		check_expr(stmt->return_stmt.to_return);
+	}
 	assert(function_in);
 	stmt->return_stmt.function_refed = function_in;
 }
@@ -336,9 +354,6 @@ void Linker::check_expr(Expr* expr) {
 	case E_ARRAY_ACCESS:
 		check_array_access(expr);
 		break;
-	case E_MEMBER_ACCESS:
-		check_member_access(expr);
-		break;
 	case E_VARIABLE_REF:
 		check_variable_ref(expr);
 		break;
@@ -346,6 +361,7 @@ void Linker::check_expr(Expr* expr) {
 	case E_STRING:
 	case E_CHAR:
 	case E_CONSTANT:
+	case E_MEMBER_ACCESS:
 		break;	
 	}
 }
@@ -391,12 +407,6 @@ void Linker::check_array_access(Expr* expr) {
 	check_expr(expr->array_access.index);
 }
 
-void Linker::check_member_access(Expr* expr) {
-	check_expr(expr->member_access.left);
-	// TODO struct member linkq
-	//check_expr(expr->member_access.right);
-}
-
 void Linker::check_variable_ref(Expr* expr) {
 	VariableScope scope_in_found = is_variable_ref_in_scope(expr);
 	if (scope_in_found == VS_NO_SCOPE) {
@@ -431,6 +441,21 @@ void Linker::check_data_type(DataType* data_type) {
 					"undefined type ‘%s’;",
 					data_type->identifier->lexeme);
 	}
+}
+
+void Linker::add_variable_to_scope(Stmt* stmt) {
+	VariableScope scope_in_found = is_variable_in_scope(stmt);
+	if (scope_in_found == VS_CURRENT_SCOPE) {
+		error_token(stmt->var_decl.identifier,
+					"redeclaration of variable ‘%s’;",
+					stmt->var_decl.identifier->lexeme);
+	}
+	else if (scope_in_found == VS_OUTER_SCOPE) {
+		warning_token(stmt->var_decl.identifier,
+					  "variable declaration shadows another variable;");
+		buf_push(current_scope->variables, stmt);
+	}
+	buf_push(current_scope->variables, stmt);
 }
 
 VariableScope Linker::is_variable_ref_in_scope(Expr* expr) {

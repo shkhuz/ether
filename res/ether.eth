@@ -76,8 +76,10 @@ main :: pub (argc hello, argv infd) {
 
 	arr[2].elem = 3;
 
-	return <char>(<int>('d'));
+	return <sdsdsd>(<int>('d'));
 }
+
+global ^char;
 
 init_global :: pub {
 	for i = 1 .. get_sys_count() {
@@ -85,11 +87,13 @@ init_global :: pub {
 	}
 }
 
-init_private :: {
+init_private :: (global int) {
 	{
 		return q;
 	}
 }
+
+global :: 123;
 
 struct System {
 	code int;

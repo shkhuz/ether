@@ -45,6 +45,7 @@ private:
 
 	void check_stmts();
 	void check_stmt(Stmt* stmt);
+	void check_struct(Stmt* stmt);
 	void check_func_decl(Stmt* stmt);
 	void check_var_decl(Stmt* stmt);
 	void check_if_stmt(Stmt* stmt);
@@ -61,9 +62,9 @@ private:
 	void check_cast_expr(Expr* expr);
 	void check_func_call(Expr* expr);
 	void check_array_access(Expr* expr);
-	void check_member_access(Expr* expr);
 	void check_variable_ref(Expr* expr);
 	void check_data_type(DataType* data_type);
+	void add_variable_to_scope(Stmt* stmt);
 	VariableScope is_variable_ref_in_scope(Expr* expr);
 	VariableScope is_variable_in_scope(Stmt* stmt);
 	
