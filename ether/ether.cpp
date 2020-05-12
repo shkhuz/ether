@@ -1,5 +1,6 @@
 #include <ether.hpp>
 #include <compiler.hpp>
+#include <data_type.hpp>
 
 #include <string>
 
@@ -95,6 +96,9 @@ int main(int argc, char** argv) {
 		ether_abort("no files supplied;");
 	}
 
+	/* --- initialization --- */
+	sys_data_type_init();
+	
 	buf_loop(source_files, i) {		
 		Compiler compiler;
 		compiler.compile(source_files[i]);

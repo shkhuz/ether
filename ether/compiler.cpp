@@ -1,10 +1,11 @@
 #include <ether.hpp>
 #include <compiler.hpp>
-#include <lexer.hpp>
 #include <token.hpp>
+#include <lexer.hpp>
 #include <parser.hpp>
 #include <ast_printer.hpp>
 #include <linker.hpp>
+#include <resolve.hpp>
 #include <code_gen.hpp>
 
 static FileDecl* file_decls = null;
@@ -64,6 +65,12 @@ Stmt** Compiler::compile(const char* in_file) {
 	Linker linker;
 	error_code linker_error_code = linker.link(parser_output.stmts);
 	if (linker_error_code == ETHER_ERROR) {
+		ether_abort_no_args();
+	}
+
+	Resolve resolve;
+	error_code resolve_error_code = resolve.resolve(parser_output.stmts);
+	if (resolve_error_code == ETHER_ERROR) {
 		ether_abort_no_args();
 	}
 	

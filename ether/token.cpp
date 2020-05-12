@@ -14,6 +14,17 @@ Token* token_create(char* lexeme, char* start, char* end, TokenType type, Source
 	return token;
 }
 
+Token* token_from_string(char* lexeme) {
+	return token_create(lexeme,
+						lexeme,
+						lexeme,
+						T_KEYWORD,
+						null,
+						0,
+						0,
+						0);
+}
+
 bool is_token_equal(Token* a, Token* b) {
 	if (str_intern(a->lexeme) ==
 		str_intern(b->lexeme)) {
