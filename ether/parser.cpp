@@ -225,6 +225,7 @@ Stmt* Parser::decl_global() {
 			// TODO: push output obj name
 			buf_push(pending_imports, str_intern(
 						 const_cast<char*>(current_dir.c_str())));
+			return null;
 		}
 		else {
 			error("expect directive;");
@@ -270,9 +271,7 @@ Stmt* Parser::decl_global() {
 							   null,
 							   false);
 	}
-	else {
-		return decl(true);
-	}
+	return decl(true);
 }
 
 Stmt* Parser::decl(bool is_global) {
@@ -795,6 +794,10 @@ Stmt* Parser::struct_create(Stmt* stmt, Token* identifier, Stmt** fields) {
 }
 
 Stmt* Parser::func_decl_create(Token* identifier, Stmt** params, DataType* return_data_type, Stmt** body, bool is_function, bool is_public) {
+	if (return_data_type == null) {
+		return_data_type = data_type_from_string("void");
+	}
+	
 	STMT_CREATE(stmt);
 	stmt->type = S_FUNC_DECL;
 	stmt->func_decl.identifier = identifier;
@@ -1006,17 +1009,14 @@ Expr* Parser::expr_precedence_3() {
 }
 
 Expr* Parser::expr_precedence_2() {
-	if (match_by_type(T_PLUS) ||
-		match_by_type(T_MINUS)) {
+	if (match_by_type(T_PLUS)  ||
+		match_by_type(T_MINUS) ||
+		match_by_type(T_BANG)  ||
+		match_by_type(T_TILDE) ||
+		match_by_type(T_CARET) ||
+		match_by_type(T_AMPERSAND)) {
 		Token* op = previous();
 		EXPR_CI(right, expr_precedence_2);		
-		return unary_create(op, right);
-	}
-
-	if (match_by_type(T_BANG) ||
-		match_by_type(T_TILDE)) {
-		Token* op = previous();
-		EXPR_CI(right, expr_precedence_2);
 		return unary_create(op, right);
 	}
 	
@@ -1027,18 +1027,7 @@ Expr* Parser::expr_precedence_2() {
 		EXPR_CI(right, expr_grouping);
 		return cast_create(start, cast_to, right);
 	}
-
-	if (match_by_type(T_CARET)) {
-		Token* op = previous();
-		EXPR_CI(right, expr_precedence_2);
-		return unary_create(op, right);
-	}
-
-	if (match_by_type(T_AMPERSAND)) {
-		Token* op = previous();
-		EXPR_CI(right, expr_precedence_2);
-		return unary_create(op, right);
-	}
+	
 	return expr_precedence_1();
 }
 

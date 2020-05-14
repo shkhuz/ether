@@ -6,12 +6,28 @@ struct System {
 	out int;
 }
 
-init :: (argc int) System {
-	sys :: get_system();
-	sys.start();
-	var :: 12;
+struct Id {
+}
 
-	ch char :: 12;
+take_int :: (n int) {
+}
+
+init :: (argc int) System {
+	dsd bool;
+
+	ch char :: 'a';
+	integer :: 1 + <int>('d');
+
+	fdf int :: get();
+	variable int;
+
+	if argc {
+		puts('d');
+		
+	}
+}
+
+get :: int {
 }
 
 argc :: 2;
@@ -20,3 +36,5 @@ get_system :: System {
 	sys System;
 	return sys;
 }
+
+extern puts(msg ^char);

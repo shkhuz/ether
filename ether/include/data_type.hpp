@@ -23,6 +23,7 @@ struct PredefinedDataTypes {
 	DataType* t_string;
 	DataType* t_char;
 	DataType* t_bool;
+	DataType* t_void_pointer;
 	DataType* t_f32;
 	DataType* t_f64;
 	

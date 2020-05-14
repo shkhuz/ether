@@ -59,8 +59,10 @@ Stmt** Compiler::compile(const char* in_file) {
 				parser_output.decls});
 	parser.add_pending_imports();
 
+#if PRINT_AST
 	AstPrinter ast_printer;
 	ast_printer.print(parser_output.stmts);
+#endif
 
 	Linker linker;
 	error_code linker_error_code = linker.link(parser_output.stmts);

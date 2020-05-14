@@ -3,6 +3,8 @@
 #include <typedef.hpp>
 
 struct Stmt;
+struct IfBranch;
+struct SwitchBranch;
 
 enum DataTypeMatch {
 	DT_NOT_MATCH,
@@ -23,6 +25,9 @@ private:
 	void resolve_stmt(Stmt* stmt);
 	void resolve_func_decl(Stmt* stmt);
 	void resolve_var_decl(Stmt* stmt);
+	void resolve_if_stmt(Stmt* stmt);
+	void resolve_if_branch(IfBranch* branch);
+	void resolve_expr_stmt(Stmt* stmt);
 	
 	DataType* resolve_expr(Expr* expr);
 	DataType* resolve_binary_expr(Expr* expr);

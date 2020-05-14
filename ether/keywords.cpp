@@ -16,4 +16,3 @@ char* keywords[KEYWORDS_LEN] = {
 	"false",
 	"null",
 };
-

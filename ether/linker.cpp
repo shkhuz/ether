@@ -241,7 +241,7 @@ void Linker::check_func_decl(Stmt* stmt) {
 	}
 		
 	if (stmt->func_decl.return_data_type) {
-		check_data_type(stmt->func_decl.return_data_type);
+		check_data_type(stmt->func_decl.return_data_type, true);
 	}
 
 	if (stmt->func_decl.is_function) {
@@ -257,7 +257,7 @@ void Linker::check_var_decl(Stmt* stmt) {
 	add_variable_to_scope(stmt);
 
 	if (stmt->var_decl.data_type) {
-		check_data_type(stmt->var_decl.data_type);
+		check_data_type(stmt->var_decl.data_type, false);
 	}
 
 	if (stmt->var_decl.is_variable) {
@@ -376,7 +376,7 @@ void Linker::check_unary_expr(Expr* expr) {
 }
 
 void Linker::check_cast_expr(Expr* expr) {
-	check_data_type(expr->cast.cast_to);
+	check_data_type(expr->cast.cast_to, false);
 	check_expr(expr->cast.right);
 }
 
@@ -394,9 +394,25 @@ void Linker::check_func_call(Expr* expr) {
 			error_expr(expr->func_call.left,
 					   "undefined function ‘%s’;",
 					   expr->func_call.left->variable_ref.identifier->lexeme);
+			return;
 		}
 	}
 
+	// TODO: remove this if statement
+	if (expr->func_call.left->type == E_VARIABLE_REF) {
+		assert(expr->func_call.function_called);
+		u64 arg_len = buf_len(expr->func_call.args);
+		u64 param_len = buf_len(expr->func_call.function_called->func_decl.params);
+		if (arg_len != param_len) {
+			error_expr(expr->func_call.left,
+					   "function ‘%s’ expects %lu arguments, but given %lu;",
+					   expr->func_call.left->variable_ref.identifier->lexeme,
+					   param_len,
+					   arg_len);
+			return;
+		}
+	}
+	
 	buf_loop(expr->func_call.args, a) {
 		check_expr(expr->func_call.args[a]);
 	}
@@ -416,7 +432,15 @@ void Linker::check_variable_ref(Expr* expr) {
 	}
 }
 
-void Linker::check_data_type(DataType* data_type) {
+void Linker::check_data_type(DataType* data_type, bool is_return_data_type) {
+	if (str_intern(data_type->identifier->lexeme) ==
+		str_intern("void") &&
+		!is_return_data_type) {
+		error_data_type(data_type,
+						"invalid use of ‘void’ data type;");
+		return;
+	}
+	
 	bool found = false;
 	buf_loop(defined_structs, i) {
 		if (is_token_equal(defined_structs[i]->stmt->struct_stmt.identifier,

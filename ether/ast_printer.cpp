@@ -62,12 +62,6 @@ void AstPrinter::print_struct_stmt(Stmt* stmt) {
 		print_stmt(stmt->struct_stmt.fields[f]);
 	}
 	tab_count--;
-
-	tab_count++;
-	buf_loop(stmt->struct_stmt.functions, f) {
-		print_stmt(stmt->struct_stmt.functions[f]);
-	}
-	tab_count--;
 }
 
 void AstPrinter::print_func_decl(Stmt* stmt) {

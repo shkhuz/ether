@@ -36,6 +36,12 @@ void Resolve::resolve_stmt(Stmt* stmt) {
 	case S_VAR_DECL:
 		resolve_var_decl(stmt);
 		break;
+	case S_IF:
+		resolve_if_stmt(stmt);
+		break;
+	case S_EXPR_STMT:
+		resolve_expr_stmt(stmt);
+		break;
 	}
 }
 
@@ -68,6 +74,41 @@ void Resolve::resolve_var_decl(Stmt* stmt) {
 	else if (!stmt->var_decl.data_type) {
 		stmt->var_decl.data_type = resolve_expr(stmt->var_decl.initializer);
 	}
+}
+
+void Resolve::resolve_if_stmt(Stmt* stmt) {
+	resolve_if_branch(stmt->if_stmt.if_branch);
+
+	buf_loop(stmt->if_stmt.elif_branch, b) {
+		resolve_if_branch(stmt->if_stmt.elif_branch[b]);
+	}
+
+	if (stmt->if_stmt.else_branch) {
+		resolve_if_branch(stmt->if_stmt.else_branch);
+	}
+}
+
+void Resolve::resolve_if_branch(IfBranch* branch) {
+	if (branch->cond) {
+		CURRENT_ERROR;
+		DataType* cond_type = resolve_expr(branch->cond);
+		EXIT_ERROR_VOID_RETURN;
+
+		DataTypeMatch match = data_type_match(cond_type, data_types.t_bool);
+		if (match == DT_NOT_MATCH) {
+			error_expr(branch->cond,
+					   "expect ‘bool’ but got ’%s’;",
+					   data_type_to_string(cond_type));
+		}
+	}
+
+	buf_loop(branch->body, s) {
+		resolve_stmt(branch->body[s]);
+	}
+}
+
+void Resolve::resolve_expr_stmt(Stmt* stmt) {
+	resolve_expr(stmt->expr_stmt);	
 }
 
 DataType* Resolve::resolve_expr(Expr* expr) {
@@ -132,55 +173,191 @@ DataType* Resolve::resolve_binary_expr(Expr* expr) {
 }
 
 DataType* Resolve::resolve_arithmetic_expr(Expr* expr) {
-	
+	CURRENT_ERROR;
+	DataType* left_type = resolve_expr(expr->binary.left);
+	DataType* right_type = resolve_expr(expr->binary.right);
+	EXIT_ERROR(null);
+
+	DataTypeMatch match = data_type_match(left_type, right_type);
+	if (match == DT_NOT_MATCH) {
+		char* operation;
+		switch (expr->binary.op->type) {
+		case T_PLUS: operation = "add"; break;
+		case T_MINUS: operation = "subtract"; break;
+		case T_ASTERISK: operation = "multiply"; break;
+		case T_SLASH: operation = "divide"; break;
+		case T_PERCENT: operation = "mod"; break;
+		default: assert(0); break;
+		}
+		error_token(expr->binary.op,
+					"cannot %s operand types ‘%s’ and ‘%s’;",
+					operation,
+					data_type_to_string(left_type),
+					data_type_to_string(right_type));
+		return null;
+	}
+	return left_type;
+	// TODO don't let operate on bools or custom types without pointers
 }
 
 DataType* Resolve::resolve_logic_binary_expr(Expr* expr) {
+	bool error_here = false;
+	for (int c = 0; c < 2; c++) {
+		CURRENT_ERROR;
+		Expr* current_expr = null;
+		if (c == 0) {
+			current_expr = expr->binary.left;
+		}
+		else if (c == 1) {
+			current_expr = expr->binary.right;
+		}
+		DataType* type = resolve_expr(current_expr);
+		EXIT_ERROR(null);
+		// TODO: continue error ???
 
+		DataTypeMatch match = data_type_match(type, data_types.t_bool);
+		if (match == DT_NOT_MATCH) {
+			error_here = true;
+			error_expr(current_expr,
+					   "operator ‘%s’ expects boolean;",
+					   expr->binary.op->lexeme);
+		}
+	}
+	
+	if (error_here) return null;
+	return data_types.t_bool;
 }
 
 DataType* Resolve::resolve_bitwise_binary_expr(Expr* expr) {
-
 }
 
 DataType* Resolve::resolve_comparison_expr(Expr* expr) {
+	CURRENT_ERROR;
+	DataType* left_type = resolve_expr(expr->binary.left);
+	DataType* right_type = resolve_expr(expr->binary.right);
+	EXIT_ERROR(null);
 
+	DataTypeMatch match = data_type_match(left_type, right_type);
+	if (match == DT_NOT_MATCH) {
+		error_token(expr->binary.op,
+					"operator ‘%s’ cannot operate on conflicting types ‘%s’ and ‘%s’;",
+					expr->binary.op->lexeme,
+					data_type_to_string(left_type),
+					data_type_to_string(right_type));
+		return null;
+	}
+	return data_types.t_bool;
+	// TODO don't let operate on bools or custom types without pointers
 }
 
 DataType* Resolve::resolve_bitshift_expr(Expr* expr) {
-
 }
 
 DataType* Resolve::resolve_unary_expr(Expr* expr) {
-
+	
 }
 
 DataType* Resolve::resolve_cast_expr(Expr* expr) {
+	CURRENT_ERROR;
+	DataType* cast_type = expr->cast.cast_to;
+	DataType* right_type = resolve_expr(expr->cast.right);
+	EXIT_ERROR(null);
 
+	if (cast_type->pointer_count == right_type->pointer_count) {
+		if (cast_type->pointer_count == 0) {
+			bool cast_is_custom_type = true;
+			bool right_is_custom_type = true;
+			for (u64 i = 0; i < BUILT_IN_TYPES_LEN; i++) {
+				if (str_intern(cast_type->identifier->lexeme) ==
+					str_intern(built_in_types[i])) {
+					cast_is_custom_type = false;
+				}
+
+				if (str_intern(right_type->identifier->lexeme) ==
+					str_intern(built_in_types[i])) {
+					right_is_custom_type = false;
+				}				
+			}
+
+			if (cast_is_custom_type) {
+				error_data_type(cast_type,
+								"cannot cast to custom type;");
+			}
+			if (right_is_custom_type) {
+				error_expr(expr->cast.right,
+						   "cannot cast a custom type;");
+			}
+			return cast_type;
+		}
+		else {
+			return cast_type;
+		}
+	}
+	
+	error_expr(expr->cast.right,
+			   "cannot cast from ‘%s’ to ‘%s’;",
+			   data_type_to_string(cast_type),
+			   data_type_to_string(right_type));
+	return null;
 }
 
 DataType* Resolve::resolve_func_call(Expr* expr) {
+	Stmt** params = expr->func_call.function_called->func_decl.params;
+	Expr** args = expr->func_call.args;
+	bool error_here = false;
+	buf_loop(args, i) {
+		CURRENT_ERROR;
+		DataType* param_type = params[i]->var_decl.data_type;
+		DataType* arg_type = resolve_expr(args[i]);
+		EXIT_ERROR(null);
 
+		DataTypeMatch match = data_type_match(param_type, arg_type);
+		if (match == DT_NOT_MATCH) {
+			error_here = true;
+			error_expr(args[i],
+					   "expected type ‘%s’, but got ‘%s’;",
+					   data_type_to_string(param_type),
+					   data_type_to_string(arg_type));
+		}
+	}
+
+	if (error_here) return null;
+	return expr->func_call.function_called->func_decl.return_data_type;
 }
 
-DataType* Resolve::resolve_array_access(Expr* expr) {
-
+DataType* Resolve::resolve_array_access(Expr* expr) {	
 }
 
 DataType* Resolve::resolve_member_access(Expr* expr) {
-
 }
 
 DataType* Resolve::resolve_variable_ref(Expr* expr) {
-
+	return expr->variable_ref.variable_refed->var_decl.data_type;
 }
 
 DataType* Resolve::resolve_number_expr(Expr* expr) {
-
+	switch (expr->number->type) {
+	case T_INTEGER:
+		return data_types.t_int;
+	case T_FLOAT64:
+		return data_types.t_f64;
+	default: break;
+	}
+	return null;
 }
 
 DataType* Resolve::resolve_constant_expr(Expr* expr) {
-
+	if (str_intern(expr->constant->lexeme) ==
+		str_intern("true") ||
+		str_intern(expr->constant->lexeme) ==
+		str_intern("false")) {
+		return data_types.t_bool;
+	}
+	else if (str_intern(expr->constant->lexeme) ==
+			 str_intern("null")) {
+		return data_types.t_void_pointer;
+	}
+	return null;
 }	
 
 DataTypeMatch Resolve::data_type_match(DataType* a, DataType* b) {

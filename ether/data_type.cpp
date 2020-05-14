@@ -9,6 +9,7 @@ void sys_data_type_init() {
 	data_types.t_string = data_type_from_string_int("char", 1);
 	data_types.t_char = data_type_from_string("char");
 	data_types.t_bool = data_type_from_string("bool");
+	data_types.t_void_pointer = data_type_from_string_int("void", 1);
 	data_types.t_f32 = data_type_from_string("f32");
 	data_types.t_f64 = data_type_from_string("f64");
 	

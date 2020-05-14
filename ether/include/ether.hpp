@@ -25,9 +25,10 @@
 
 #define TAB_SIZE 4
 #define KEYWORDS_LEN 14
-#define BUILT_IN_TYPES_LEN 3
+#define BUILT_IN_TYPES_LEN 4
 
 #define PRINT_TOKEN 0
+#define PRINT_AST 0
 
 void ether_abort(const char* fmt, ...);
 void ether_abort_no_args();
