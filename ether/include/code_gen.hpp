@@ -19,6 +19,7 @@ private:
 	void gen_stmt(Stmt* stmt);
 	void gen_struct(Stmt* stmt);
 	void gen_var_decl(Stmt* stmt);
+	void gen_expr(Expr* expr);
 
 	void print_data_type(DataType* data_type);
 	void print_tabs_by_indentation();

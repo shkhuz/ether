@@ -614,6 +614,8 @@ Stmt* Parser::stmt() {
 		error_loc = FOR_HEADER;
 		STMT_CREATE(counter);
 		counter->type = S_VAR_DECL;
+		counter->var_decl.data_type = null;
+		counter->var_decl.initializer = null;
 		counter->var_decl.is_variable = true;
 		Expr* end = null;
 		if (match_identifier()) {
@@ -807,8 +809,10 @@ Stmt* Parser::func_decl_create(Token* identifier, Stmt** params, DataType* retur
 	stmt->func_decl.is_function = is_function;
 	stmt->func_decl.is_public = is_public;
 	stmt->func_decl.struct_in = current_struct;
-	
-	if (is_function && is_public) {
+
+	// if extern functions are not to be seen by other
+	// files, add condition here
+	if (is_public) {
 		if (!current_struct && str_intern(identifier->lexeme) == str_intern("main")) {
 		}
 		else {
@@ -835,15 +839,15 @@ Stmt* Parser::global_var_decl_create(Token* identifier, DataType* data_type, Exp
 	stmt->var_decl.initializer = initializer;
 	stmt->var_decl.is_variable = is_variable;
 
-	if (is_variable) {
-		STMT_CREATE(decl);
-		decl->type = S_VAR_DECL;
-		decl->var_decl.identifier = identifier;
-		decl->var_decl.data_type = data_type;
-		decl->var_decl.initializer = null;
-		decl->var_decl.is_variable = false;
-		buf_push(decls, decl);
-	}
+	// if extern variables are not to be seen by other
+	// files, add condition here
+	STMT_CREATE(decl);
+	decl->type = S_VAR_DECL;
+	decl->var_decl.identifier = identifier;
+	decl->var_decl.data_type = data_type;
+	decl->var_decl.initializer = null;
+	decl->var_decl.is_variable = false;
+	buf_push(decls, decl);
 	
 	return stmt;
 }

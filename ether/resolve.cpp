@@ -30,6 +30,9 @@ void Resolve::destroy() {
 
 void Resolve::resolve_stmt(Stmt* stmt) {
 	switch (stmt->type) {
+	case S_STRUCT:
+		resolve_struct(stmt);
+		break;
 	case S_FUNC_DECL:
 		resolve_func_decl(stmt);
 		break;
@@ -39,10 +42,19 @@ void Resolve::resolve_stmt(Stmt* stmt) {
 	case S_IF:
 		resolve_if_stmt(stmt);
 		break;
+	case S_FOR:
+		resolve_for_stmt(stmt);
+		break;
 	case S_EXPR_STMT:
 		resolve_expr_stmt(stmt);
 		break;
+	case S_BLOCK:
+		resolve_block(stmt);
+		break;
 	}
+}
+
+void Resolve::resolve_struct(Stmt* stmt) {
 }
 
 void Resolve::resolve_func_decl(Stmt* stmt) {
@@ -107,8 +119,44 @@ void Resolve::resolve_if_branch(IfBranch* branch) {
 	}
 }
 
+void Resolve::resolve_for_stmt(Stmt* stmt) {
+	CURRENT_ERROR;
+	if (!stmt->for_stmt.counter->var_decl.initializer &&
+		!stmt->for_stmt.counter->var_decl.data_type) {
+		stmt->for_stmt.counter->var_decl.data_type = data_types.t_int;
+	}
+	
+	resolve_var_decl(stmt->for_stmt.counter);
+	DataType* counter_type = stmt->for_stmt.counter->var_decl.data_type;
+	if (error_count == current_error_count) {
+		DataTypeMatch match = data_type_integer(counter_type);
+		if (match == DT_NOT_MATCH) {
+			error_token(stmt->for_stmt.counter->var_decl.identifier,
+						"expect integer type;");
+		}
+
+		DataType* end_type = resolve_expr(stmt->for_stmt.end);
+		match = data_type_match(end_type, counter_type);
+		if (match == DT_NOT_MATCH) {
+			error_expr(stmt->for_stmt.end,
+					   "expect ‘%s’ type;",
+					   data_type_to_string(counter_type));
+		}
+	}
+
+	buf_loop(stmt->for_stmt.body, s) {
+		resolve_stmt(stmt->for_stmt.body[s]);
+	}
+}
+
 void Resolve::resolve_expr_stmt(Stmt* stmt) {
 	resolve_expr(stmt->expr_stmt);	
+}
+
+void Resolve::resolve_block(Stmt* stmt) {
+	buf_loop(stmt->block, s) {
+		resolve_stmt(stmt->block[s]);
+	}
 }
 
 DataType* Resolve::resolve_expr(Expr* expr) {
@@ -253,8 +301,7 @@ DataType* Resolve::resolve_comparison_expr(Expr* expr) {
 DataType* Resolve::resolve_bitshift_expr(Expr* expr) {
 }
 
-DataType* Resolve::resolve_unary_expr(Expr* expr) {
-	
+DataType* Resolve::resolve_unary_expr(Expr* expr) {	
 }
 
 DataType* Resolve::resolve_cast_expr(Expr* expr) {
@@ -359,31 +406,6 @@ DataType* Resolve::resolve_constant_expr(Expr* expr) {
 	}
 	return null;
 }	
-
-DataTypeMatch Resolve::data_type_match(DataType* a, DataType* b) {
-	if (a && b) {
-		if (a->is_array != b->is_array) {
-			return DT_NOT_MATCH;
-		}
-		if (a->is_array) {
-			if (!is_token_equal(a->array_elem_count, b->array_elem_count)) {
-				return DT_NOT_MATCH;
-			}
-		}
-
-		if (a->pointer_count != b->pointer_count) {
-			return DT_NOT_MATCH;
-		}
-
-		if (!is_token_equal(a->identifier, b->identifier)) {
-			return DT_NOT_MATCH;
-		}
-
-		return DT_MATCH;
-	}
-	
-	return DT_NOT_MATCH;
-}
 
 char* Resolve::data_type_to_string(DataType* data_type) {
 	/* TODO: this is highly inefficient; use maps */

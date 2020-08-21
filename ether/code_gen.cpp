@@ -38,9 +38,12 @@ void CodeGenerator::gen_struct(Stmt* stmt) {
 	print_string(" {");
 	print_newline();
 
+	tab_count++;
 	buf_loop(stmt->struct_stmt.fields, f) {
 		gen_stmt(stmt->struct_stmt.fields[f]);
 	}
+	tab_count--;
+	print_char('}');
 }
 
 void CodeGenerator::gen_var_decl(Stmt* stmt) {

@@ -94,15 +94,63 @@ void Linker::add_functions() {
 }
 
 void Linker::add_function_global(Stmt* stmt) {
+	bool error_here = false;
 	buf_loop(defined_functions, i) {
 		if (is_token_equal(stmt->func_decl.identifier,
 						   defined_functions[i]->func_decl.identifier)) {
-			error_token(stmt->func_decl.identifier,
-						"redefinition of function ‘%s’;",
-						stmt->func_decl.identifier->lexeme);
-			return;
+			if (!stmt->func_decl.is_function &&
+				!defined_functions[i]->func_decl.is_function) {
+				DataTypeMatch match =
+					data_type_match(stmt->func_decl.return_data_type,
+									defined_functions[i]->func_decl.return_data_type);
+				if (match != DT_MATCH) {
+					error_data_type(stmt->func_decl.return_data_type,
+									"extern function conflicts from previous declaration (return type conflict);");
+					error_here = true;
+				}
+
+				u64 current_stmt_param_count = buf_len(stmt->func_decl.params);
+				u64 previous_stmt_param_count = buf_len(defined_functions[i]->func_decl.params);
+				bool arity_error = false;
+				if (current_stmt_param_count != previous_stmt_param_count) {
+					error_token(stmt->func_decl.identifier,
+								"extern function conflicts from previous declaration (parameter count conflict);");
+					error_here = true;
+					arity_error = true;
+				}
+
+				Stmt** current_decl_params = stmt->func_decl.params;
+				Stmt** previous_decl_params = defined_functions[i]->func_decl.params;
+				if (!arity_error) {
+					buf_loop(current_decl_params, cp) {
+						if (!is_token_equal(current_decl_params[cp]->var_decl.identifier,
+											previous_decl_params[cp]->var_decl.identifier)) {
+							error_token(current_decl_params[cp]->var_decl.identifier,
+										"extern function conflicts from previous declaration (parameter name conflict);");
+							error_here = true;
+						}
+						
+						DataTypeMatch param_match =
+							data_type_match(current_decl_params[cp]->var_decl.data_type,
+											previous_decl_params[cp]->var_decl.data_type);
+						if (param_match != DT_MATCH) {
+							error_data_type(current_decl_params[cp]->var_decl.data_type,
+											"extern function conflicts from previous declaration (parameter data type conflict);");
+							error_here = true;
+						}
+					}
+				}
+			}
+			else {
+				error_token(stmt->func_decl.identifier,
+							"redefinition of function ‘%s’;",
+							stmt->func_decl.identifier->lexeme);
+				return;
+			}
 		}
 	}
+
+	if (error_here) return;
 
 	buf_push(defined_functions, stmt);
 }
@@ -139,15 +187,32 @@ void Linker::add_variables() {
 }
 
 void Linker::add_variable(Stmt* stmt) {
+	bool error_here = false;
 	buf_loop(global_scope->variables, i) {
 		if (is_token_equal(stmt->var_decl.identifier,
 						   global_scope->variables[i]->var_decl.identifier)) {
-			error_token(stmt->var_decl.identifier,
-					  "redeclaration of variable ‘%s’;",
-					  stmt->var_decl.identifier->lexeme);
-			return;
+			if (!stmt->var_decl.is_variable &&
+				!global_scope->variables[i]->var_decl.is_variable) {
+				DataTypeMatch match =
+					data_type_match(stmt->var_decl.data_type,
+									global_scope->variables[i]->var_decl.data_type);
+				if (match != DT_MATCH) {
+					error_token(stmt->var_decl.identifier,
+								"extern variable conflicts from previous declaration;");
+					error_here = true;
+				}
+			}
+			else {
+				error_token(stmt->var_decl.identifier,
+							"redeclaration of variable ‘%s’;",
+							stmt->var_decl.identifier->lexeme);
+				return;
+			}
 		}
 	}
+	
+	if (error_here) return;
+	
 	if (stmt->var_decl.initializer) {
 		check_expr(stmt->var_decl.initializer);
 	}

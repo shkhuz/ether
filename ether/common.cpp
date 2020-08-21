@@ -22,7 +22,10 @@ bool match_extension(std::string& str, const char* ext) {
 char* change_extension(std::string& str, char* ext) {
 	u64 dot_index = std::string::npos;
 	if ((dot_index = str.find_last_of('.')) == std::string::npos) {
-		return null;
+		std::string file = std::string(str.c_str());
+		file.append(".");
+		file.append(ext);
+		return str_intern(const_cast<char*>(file.c_str()));
 	}
 
 	std::string file_without_ext = str.substr(0, dot_index + 1);

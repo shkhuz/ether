@@ -50,3 +50,48 @@ DataType* data_type_from_string_int(char* type, u8 pointer_count) {
 							null,
 							identifier);
 }
+
+DataTypeMatch data_type_match(DataType* a, DataType* b) {
+	if (a && b) {
+		if (a->is_array != b->is_array) {
+			return DT_NOT_MATCH;
+		}
+		if (a->is_array) {
+			if (!is_token_equal(a->array_elem_count, b->array_elem_count)) {
+				return DT_NOT_MATCH;
+			}
+		}
+
+		if (a->pointer_count != b->pointer_count) {
+			return DT_NOT_MATCH;
+		}
+
+		if (!is_token_equal(a->identifier, b->identifier)) {
+			return DT_NOT_MATCH;
+		}
+
+		return DT_MATCH;
+	}
+	
+	return DT_NOT_MATCH;
+}
+
+DataTypeMatch data_type_integer(DataType* data_type) {
+	if (data_type) {
+		DataType** predef_data_types_array = &(data_types.t_int);
+		bool integer_match = false;
+		for (u64 i = 0; i < _DT_INTEGER_TYPE_COUNT; i++) {
+			DataTypeMatch match = data_type_match(data_type, predef_data_types_array[i]);
+			if (match != DT_NOT_MATCH) {
+				integer_match = true;
+				break;
+			}
+		}
+
+		if (integer_match) {
+			return DT_MATCH;
+		}
+	}
+
+	return DT_NOT_MATCH;
+}

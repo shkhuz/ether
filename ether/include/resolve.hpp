@@ -6,11 +6,6 @@ struct Stmt;
 struct IfBranch;
 struct SwitchBranch;
 
-enum DataTypeMatch {
-	DT_NOT_MATCH,
-	DT_MATCH,
-};
-
 struct Resolve {
 	Stmt** stmts;
 
@@ -23,11 +18,14 @@ private:
 	void destroy();
 	
 	void resolve_stmt(Stmt* stmt);
+	void resolve_struct(Stmt* stmt);
 	void resolve_func_decl(Stmt* stmt);
 	void resolve_var_decl(Stmt* stmt);
 	void resolve_if_stmt(Stmt* stmt);
 	void resolve_if_branch(IfBranch* branch);
+	void resolve_for_stmt(Stmt* stmt);
 	void resolve_expr_stmt(Stmt* stmt);
+	void resolve_block(Stmt* stmt);
 	
 	DataType* resolve_expr(Expr* expr);
 	DataType* resolve_binary_expr(Expr* expr);
@@ -45,7 +43,6 @@ private:
 	DataType* resolve_number_expr(Expr* expr);
 	DataType* resolve_constant_expr(Expr* expr);
 
-	DataTypeMatch data_type_match(DataType* a, DataType* b);
 	char* data_type_to_string(DataType* data_type);
 
 public:

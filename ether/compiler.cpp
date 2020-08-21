@@ -12,9 +12,6 @@ static FileDecl* file_decls = null;
 
 Stmt** Compiler::compile(const char* in_file) {
 	std::string current_file = std::string(in_file);
-	if (!match_extension(current_file, "eth")) {
-		ether_abort("%s: invalid source file extension;", in_file);
-	}
 
 	char* obj_fpath = change_extension(current_file, "o");
 	
@@ -76,8 +73,8 @@ Stmt** Compiler::compile(const char* in_file) {
 		ether_abort_no_args();
 	}
 	
-	//CodeGenerator code_generator;
-	//code_generator.generate(parser_output.stmts, const_cast<char*>(obj_fpath));
+	CodeGenerator code_generator;
+	code_generator.generate(parser_output.stmts, const_cast<char*>(obj_fpath));
 
 	return parser_output.decls;
 }
