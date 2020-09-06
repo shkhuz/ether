@@ -1,4 +1,5 @@
 # ether
+## NOTE: ETHER IS NO LONGER ACTIVELY DEVELOPED. 
 A low-level general purpose programming language built to improve on C.
 
 ## Sematics and Syntax
